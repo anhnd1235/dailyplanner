@@ -2184,7 +2184,13 @@ let selectedDate = todayStr();
 let calYear, calMonth; // for calendar navigation
 let currentFilter = 'all';
 
-function todayStr() { return new Date().toISOString().slice(0, 10); }
+function todayStr() {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 function initCalendarMonth() {
   const d = new Date(selectedDate);
