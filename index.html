@@ -2234,11 +2234,17 @@ function showToast(msg, type = '') {
 // Supabase Config
 const supabaseUrl = 'https://fjfamppyggzsfdluoqcf.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqZmFtcHB5Z2d6c2ZkbHVvcWNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0MDgwODUsImV4cCI6MjA5NTk4NDA4NX0.70U-5a77eJg68kAXH-meEBG-x2I-lAgch082RSTkkgY';
-const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 let currentUser = null;
 
 // In-memory cache: { 'YYYY-MM-DD': [task, ...], ... }
 let tasksCache = {};
+
+function getRedirectUrl() {
+  // Luôn trả về thư mục gốc của GitHub Pages, tránh lỗi /index.html hoặc thiếu dấu /
+  const path = window.location.pathname.replace(/index\.html$/i, '');
+  return window.location.origin + path;
+}
 
 async function signInWithGoogle() {
   try {
@@ -2246,27 +2252,25 @@ async function signInWithGoogle() {
       showToast('Lỗi: Cần mở qua GitHub Pages để đăng nhập Google.', 'error');
       return;
     }
-    
-    // Check if supabase exists
-    if (typeof supabase === 'undefined') {
-      showToast('Lỗi: Supabase chưa được khởi tạo. Vui lòng kiểm tra mạng.', 'error');
-      return;
-    }
 
-    const { data, error } = await supabase.auth.signInWithOAuth({
+    const { error } = await supabaseClient.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin + window.location.pathname
+        redirectTo: getRedirectUrl(),
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent'
+        }
       }
     });
-    
+
     if (error) {
       console.error('Google auth error:', error);
-      showToast('Lỗi đăng nhập: ' + error.message, 'error');
+      showToast('Lỗi đăng nhập Google: ' + error.message, 'error');
     }
   } catch (err) {
     console.error('Google auth exception:', err);
-    showToast('Lỗi: ' + err.message, 'error');
+    showToast('Lỗi đăng nhập Google: ' + err.message, 'error');
   }
 }
 
@@ -2285,27 +2289,27 @@ async function signInWithEmail() {
 
   const btn = document.getElementById('emailSignInBtn');
   const loading = document.getElementById('authLoading');
-  
+
   btn.style.display = 'none';
   emailInput.style.display = 'none';
   passInput.style.display = 'none';
   loading.classList.add('show');
 
-  // Try to sign in first
-  let { data, error } = await window.supabase.auth.signInWithPassword({ email, password });
+  let { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
-  if (error && error.message.includes('Invalid login credentials')) {
-    // If user not found or wrong password, try sign up
-    const signUpRes = await window.supabase.auth.signUp({ email, password });
-    error = signUpRes.error;
+  // Nếu chưa có tài khoản thì đăng ký mới
+  if (error && error.message && error.message.includes('Invalid login credentials')) {
+    const signUpRes = await supabaseClient.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: getRedirectUrl() }
+    });
     data = signUpRes.data;
-    
-    if (!error && !signUpRes.data.session) {
-      btn.style.display = 'flex';
-      emailInput.style.display = 'block';
-      passInput.style.display = 'block';
-      loading.classList.remove('show');
-      showToast('Đăng ký thành công! Vui lòng kiểm tra hộp thư Email để xác nhận tài khoản.', 'success');
+    error = signUpRes.error;
+
+    if (!error && !data.session) {
+      resetAuthForm();
+      showToast('Đăng ký thành công! Vui lòng kiểm tra Email để xác nhận tài khoản.', 'success');
       return;
     }
   }
@@ -2313,49 +2317,85 @@ async function signInWithEmail() {
   loading.classList.remove('show');
 
   if (error) {
-    btn.style.display = 'flex';
-    emailInput.style.display = 'block';
-    passInput.style.display = 'block';
-    // Dịch lỗi sang tiếng Việt cho dễ hiểu
-    let errorMsg = error.message;
+    resetAuthForm();
+    let errorMsg = error.message || 'Không rõ lỗi';
     if (errorMsg.includes('Email logins are disabled')) errorMsg = 'Chưa bật tính năng Đăng nhập Email trong Supabase.';
-    else if (errorMsg.includes('User already registered')) errorMsg = 'Tài khoản chưa được xác nhận Email.';
-    
+    else if (errorMsg.includes('User already registered')) errorMsg = 'Tài khoản đã tồn tại hoặc chưa xác nhận Email.';
     showToast(t('auth_error') + ': ' + errorMsg, 'error');
     console.error('Auth error:', error);
   }
 }
 
 async function signOut() {
-  closeUserDropdown();
-  await supabase.auth.signOut();
+  await supabaseClient.auth.signOut();
   currentUser = null;
   tasksCache = {};
   showAuthUI();
   showToast(t('auth_logout_success'));
 }
 
+function resetAuthForm() {
+  const btn = document.getElementById('emailSignInBtn');
+  const emailInput = document.getElementById('authEmailInput');
+  const passInput = document.getElementById('authPasswordInput');
+  const loading = document.getElementById('authLoading');
+  if (btn) btn.style.display = 'flex';
+  if (emailInput) emailInput.style.display = 'block';
+  if (passInput) passInput.style.display = 'block';
+  if (loading) loading.classList.remove('show');
+}
+
 function showAuthUI() {
-  document.getElementById('authOverlay').classList.remove('hidden');
-  document.querySelectorAll('.app-content').forEach(el => el.classList.add('auth-hidden'));
-  document.getElementById('userMenu').classList.remove('show');
-  // Reset auth form state
-  document.getElementById('emailSignInBtn').style.display = 'flex';
-  document.getElementById('authEmailInput').style.display = 'block';
-  document.getElementById('authPasswordInput').style.display = 'block';
-  document.getElementById('authEmailInput').value = '';
-  document.getElementById('authPasswordInput').value = '';
-  document.getElementById('authLoading').classList.remove('show');
+  const overlay = document.getElementById('authOverlay');
+  if (overlay) overlay.classList.remove('hidden');
+  resetAuthForm();
 }
 
 function hideAuthUI() {
-  document.getElementById('authOverlay').classList.add('hidden');
-  document.querySelectorAll('.app-content').forEach(el => el.classList.remove('auth-hidden'));
+  const overlay = document.getElementById('authOverlay');
+  if (overlay) overlay.classList.add('hidden');
 }
 
 function updateUserUI(user) {
   if (!user) return;
-  const meta = user.user_metadata || {}
+  const meta = user.user_metadata || {};
+  console.log('Đã đăng nhập:', {
+    email: user.email,
+    name: meta.full_name || meta.name || '',
+    avatar: meta.avatar_url || ''
+  });
+}
+
+async function initAuth() {
+  const { data, error } = await supabaseClient.auth.getSession();
+  if (error) {
+    console.error('Get session error:', error);
+  }
+
+  currentUser = data?.session?.user || null;
+  if (currentUser) {
+    hideAuthUI();
+    updateUserUI(currentUser);
+  } else {
+    showAuthUI();
+  }
+
+  supabaseClient.auth.onAuthStateChange((event, session) => {
+    currentUser = session?.user || null;
+    if (currentUser) {
+      hideAuthUI();
+      updateUserUI(currentUser);
+      showToast(t('auth_login_success'), 'success');
+    } else {
+      showAuthUI();
+    }
+  });
+}
+
+// Đưa hàm ra window để onclick="..." trong HTML gọi được ổn định
+window.signInWithGoogle = signInWithGoogle;
+window.signInWithEmail = signInWithEmail;
+window.signOut = signOut;
 
 //  INIT
 // ══════════════════════════════════════════════════════════════════
@@ -2365,6 +2405,7 @@ initCalendarMonth();
 renderCalendar();
 updateDateBar();
 renderTasks();
+initAuth();
 </script>
 </body>
 </html>
