@@ -2235,7 +2235,7 @@ function showToast(msg, type = '') {
 const supabaseUrl = 'https://tvuxtooyfvwctzllnczl.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2dXh0b295ZnZ3Y3R6bGxuY3psIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkzMTcwNzIsImV4cCI6MjA2NDg5MzA3Mn0.RzOtl9N-1gD3N6V7aO3hV9_T3Y09r010wA8_aXjY1sI';
 const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
-\nlet currentUser = null;
+let currentUser = null;
 
 // In-memory cache: { 'YYYY-MM-DD': [task, ...], ... }
 let tasksCache = {};
