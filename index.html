@@ -1441,6 +1441,23 @@ const i18n = {
     dow_cal: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
     months: ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'],
     month_short: ['T1','T2','T3','T4','T5','T6','T7','T8','T9','T10','T11','T12'],
+    // Auth strings
+    auth_email_placeholder: 'Nhập email của bạn...',
+    auth_pass_placeholder: 'Nhập mật khẩu (để Đăng nhập / Đăng ký)',
+    auth_email_btn: 'Login / Register',
+    auth_google_btn: 'Sign in with Google',
+    auth_divider: 'OR SIGN IN WITH EMAIL',
+    auth_google_error: 'Lỗi đăng nhập Google. Vui lòng thử lại.',
+    auth_email_sent: 'Đăng nhập thành công',
+    auth_email_empty: 'Vui lòng nhập đầy đủ Email & Mật khẩu.',
+    auth_loading: 'Đang xác thực...',
+    auth_footer: 'Dữ liệu được bảo mật bởi Supabase.\nMỗi tài khoản có dữ liệu riêng biệt.',
+    auth_subtitle: 'Quản lý công việc thông minh.\nĐồng bộ mọi nơi, mọi thiết bị.',
+    auth_logout: 'Đăng xuất',
+    auth_login_success: 'Đăng nhập thành công! 🎉',
+    auth_logout_success: 'Đã đăng xuất',
+    auth_error: 'Lỗi đăng nhập. Vui lòng thử lại.',
+
   },
   en: {
     tab_tasks: 'Tasks',
@@ -1496,6 +1513,23 @@ const i18n = {
     dow_cal: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
     months: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
     month_short: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+    // Auth strings
+    auth_email_placeholder: 'Enter your email...',
+    auth_pass_placeholder: 'Enter password (to Login / Register)',
+    auth_email_btn: 'Login / Register',
+    auth_google_btn: 'Sign in with Google',
+    auth_divider: 'or sign in with email',
+    auth_google_error: 'Google sign-in error. Please try again.',
+    auth_email_sent: 'Login success',
+    auth_email_empty: 'Please enter Email and Password.',
+    auth_loading: 'Authenticating...',
+    auth_footer: 'Data secured by Supabase.\nEach account has separate data.',
+    auth_subtitle: 'Smart task management.\nSync everywhere, on every device.',
+    auth_logout: 'Sign out',
+    auth_login_success: 'Signed in successfully! 🎉',
+    auth_logout_success: 'Signed out',
+    auth_error: 'Login error. Please try again.',
+
   }
 };
 
@@ -2196,6 +2230,120 @@ function showToast(msg, type = '') {
 }
 
 // ══════════════════════════════════════════════════════════════════
+
+// Supabase Config
+const supabaseUrl = 'https://tvuxtooyfvwctzllnczl.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2dXh0b295ZnZ3Y3R6bGxuY3psIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkzMTcwNzIsImV4cCI6MjA2NDg5MzA3Mn0.RzOtl9N-1gD3N6V7aO3hV9_T3Y09r010wA8_aXjY1sI';
+const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+\nlet currentUser = null;
+
+// In-memory cache: { 'YYYY-MM-DD': [task, ...], ... }
+let tasksCache = {};
+
+async function signInWithGoogle() {
+  if (window.location.protocol === 'file:') {
+    showToast('Lỗi: Cần mở qua localhost hoặc GitHub Pages để đăng nhập.', 'error');
+    return;
+  }
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: window.location.origin + window.location.pathname
+    }
+  });
+  if (error) {
+    console.error('Google auth error:', error);
+    showToast(t('auth_google_error') + ': ' + error.message, 'error');
+  }
+}
+
+async function signInWithEmail() {
+  const emailInput = document.getElementById('authEmailInput');
+  const passInput = document.getElementById('authPasswordInput');
+  const email = emailInput.value.trim();
+  const password = passInput.value;
+
+  if (!email || !password) {
+    showToast(t('auth_email_empty'), 'error');
+    if (!email) emailInput.focus();
+    else passInput.focus();
+    return;
+  }
+
+  const btn = document.getElementById('emailSignInBtn');
+  const loading = document.getElementById('authLoading');
+  
+  btn.style.display = 'none';
+  emailInput.style.display = 'none';
+  passInput.style.display = 'none';
+  loading.classList.add('show');
+
+  // Try to sign in first
+  let { data, error } = await window.supabase.auth.signInWithPassword({ email, password });
+
+  if (error && error.message.includes('Invalid login credentials')) {
+    // If user not found or wrong password, try sign up
+    const signUpRes = await window.supabase.auth.signUp({ email, password });
+    error = signUpRes.error;
+    data = signUpRes.data;
+    
+    if (!error && !signUpRes.data.session) {
+      btn.style.display = 'flex';
+      emailInput.style.display = 'block';
+      passInput.style.display = 'block';
+      loading.classList.remove('show');
+      showToast('Đăng ký thành công! Vui lòng kiểm tra hộp thư Email để xác nhận tài khoản.', 'success');
+      return;
+    }
+  }
+
+  loading.classList.remove('show');
+
+  if (error) {
+    btn.style.display = 'flex';
+    emailInput.style.display = 'block';
+    passInput.style.display = 'block';
+    // Dịch lỗi sang tiếng Việt cho dễ hiểu
+    let errorMsg = error.message;
+    if (errorMsg.includes('Email logins are disabled')) errorMsg = 'Chưa bật tính năng Đăng nhập Email trong Supabase.';
+    else if (errorMsg.includes('User already registered')) errorMsg = 'Tài khoản chưa được xác nhận Email.';
+    
+    showToast(t('auth_error') + ': ' + errorMsg, 'error');
+    console.error('Auth error:', error);
+  }
+}
+
+async function signOut() {
+  closeUserDropdown();
+  await supabase.auth.signOut();
+  currentUser = null;
+  tasksCache = {};
+  showAuthUI();
+  showToast(t('auth_logout_success'));
+}
+
+function showAuthUI() {
+  document.getElementById('authOverlay').classList.remove('hidden');
+  document.querySelectorAll('.app-content').forEach(el => el.classList.add('auth-hidden'));
+  document.getElementById('userMenu').classList.remove('show');
+  // Reset auth form state
+  document.getElementById('emailSignInBtn').style.display = 'flex';
+  document.getElementById('authEmailInput').style.display = 'block';
+  document.getElementById('authPasswordInput').style.display = 'block';
+  document.getElementById('authEmailInput').value = '';
+  document.getElementById('authPasswordInput').value = '';
+  document.getElementById('authLoading').classList.remove('show');
+}
+
+function hideAuthUI() {
+  document.getElementById('authOverlay').classList.add('hidden');
+  document.querySelectorAll('.app-content').forEach(el => el.classList.remove('auth-hidden'));
+}
+
+function updateUserUI(user) {
+  if (!user) return;
+  const meta = user.user_metadata || {}
+
 //  INIT
 // ══════════════════════════════════════════════════════════════════
 applyTheme();
