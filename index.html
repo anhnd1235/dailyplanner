@@ -2328,11 +2328,12 @@ async function addTask() {
   const input = document.getElementById('taskInput');
   const priority = document.getElementById('priorityInput').value;
   const text = input.value.trim();
-  if (!text) { showToast(t('toast_empty'), 'error'); return; }
+  if (!text) { showToast(t('toast_empty'), 'error'); input.focus(); return; }
 
   input.disabled = true;
   const task = await addTaskToDb(selectedDate, text, priority);
   input.disabled = false;
+  input.focus();
 
   if (!task) {
     showToast('Error adding task', 'error');
