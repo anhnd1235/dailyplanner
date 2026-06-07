@@ -1,0 +1,2802 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="TaskFlow Pro – Ứng dụng quản lý công việc thông minh với calendar, dashboard và biểu đồ." />
+  <title>TaskFlow Pro – Quản lý Công việc</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    /* ═══════════════════════════════════════════════════════════════
+       RESET & DESIGN TOKENS
+    ═══════════════════════════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f0f2f5;
+      --bg2: #e4e7ec;
+      --surface: #ffffff;
+      --surface2: #f8fafc;
+      --surface-glass: rgba(255,255,255,0.72);
+      --border: #e2e8f0;
+      --border-light: #f1f5f9;
+      --primary: #6366f1;
+      --primary-light: #eef2ff;
+      --primary-hover: #4f46e5;
+      --primary-glow: rgba(99,102,241,0.25);
+      --success: #10b981;
+      --success-light: #ecfdf5;
+      --warning: #f59e0b;
+      --warning-light: #fffbeb;
+      --danger: #ef4444;
+      --danger-light: #fef2f2;
+      --text: #1e293b;
+      --text-secondary: #475569;
+      --text-muted: #64748b;
+      --text-light: #94a3b8;
+      --radius: 16px;
+      --radius-md: 12px;
+      --radius-sm: 8px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.06);
+      --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
+      --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* ── Dark Theme ── */
+    [data-theme="dark"] {
+      --bg: #0f172a;
+      --bg2: #1e293b;
+      --surface: #1e293b;
+      --surface2: #334155;
+      --surface-glass: rgba(30,41,59,0.82);
+      --border: #334155;
+      --border-light: #1e293b;
+      --primary: #818cf8;
+      --primary-light: rgba(129,140,248,0.12);
+      --primary-hover: #6366f1;
+      --primary-glow: rgba(129,140,248,0.3);
+      --success: #34d399;
+      --success-light: rgba(52,211,153,0.12);
+      --warning: #fbbf24;
+      --warning-light: rgba(251,191,36,0.12);
+      --danger: #f87171;
+      --danger-light: rgba(248,113,113,0.12);
+      --text: #f1f5f9;
+      --text-secondary: #cbd5e1;
+      --text-muted: #94a3b8;
+      --text-light: #64748b;
+      --shadow: 0 1px 3px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.2);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.2);
+      --shadow-lg: 0 8px 32px rgba(0,0,0,0.4);
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      transition: background var(--transition), color var(--transition);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       HEADER
+    ═══════════════════════════════════════════════════════════════ */
+    header {
+      background: var(--surface-glass);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      height: 64px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .logo {
+      font-size: 20px;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--primary), #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-right: 32px;
+      flex-shrink: 0;
+    }
+    .logo svg { width: 28px; height: 28px; flex-shrink: 0; }
+    .logo svg rect, .logo svg path {
+      stroke: var(--primary);
+    }
+
+    .nav-tabs { display: flex; gap: 4px; flex: 1; }
+    .nav-tab {
+      padding: 8px 18px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 14px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all var(--transition);
+      position: relative;
+    }
+    .nav-tab:hover { background: var(--primary-light); color: var(--text); }
+    .nav-tab.active {
+      background: var(--primary-light);
+      color: var(--primary);
+    }
+    .nav-tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 24px;
+      height: 3px;
+      border-radius: 3px;
+      background: var(--primary);
+    }
+
+    .header-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; flex-shrink: 0; }
+    .header-btn {
+      width: 38px; height: 38px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-muted);
+      font-size: 18px;
+      transition: all var(--transition);
+      position: relative;
+    }
+    .header-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: var(--primary-light);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px var(--primary-glow);
+    }
+    .header-btn svg { width: 18px; height: 18px; }
+
+    /* Language dropdown */
+    .lang-dropdown {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-md);
+      overflow: hidden;
+      display: none;
+      z-index: 200;
+      min-width: 150px;
+      animation: dropIn 0.15s ease;
+    }
+    .lang-dropdown.show { display: block; }
+    .lang-option {
+      padding: 10px 16px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.1s;
+      border: none;
+      background: transparent;
+      width: 100%;
+      font-family: inherit;
+      text-align: left;
+    }
+    .lang-option:hover { background: var(--primary-light); }
+    .lang-option.active { color: var(--primary); background: var(--primary-light); }
+    .lang-option .flag { font-size: 18px; }
+
+    @keyframes dropIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       MAIN LAYOUT
+    ═══════════════════════════════════════════════════════════════ */
+    main { max-width: 1200px; margin: 0 auto; padding: 24px 20px; }
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* ═══════════════════════════════════════════════════════════════
+       TASKS TAB: CALENDAR + TODO SIDE BY SIDE
+    ═══════════════════════════════════════════════════════════════ */
+    .tasks-layout {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    /* ── Calendar Panel ── */
+    .calendar-panel {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px;
+      position: sticky;
+      top: 88px;
+      transition: box-shadow var(--transition), background var(--transition);
+    }
+    .calendar-panel:hover { box-shadow: var(--shadow-md); }
+
+    .cal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .cal-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .cal-nav { display: flex; gap: 6px; align-items: center; }
+    .cal-nav-btn {
+      width: 30px; height: 30px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+      color: var(--text-muted);
+      transition: all var(--transition);
+    }
+    .cal-nav-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+    .cal-today-btn {
+      padding: 5px 12px;
+      border-radius: 100px;
+      border: 1.5px solid var(--primary);
+      background: var(--primary-light);
+      color: var(--primary);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all var(--transition);
+      font-family: inherit;
+    }
+    .cal-today-btn:hover { background: var(--primary); color: #fff; }
+
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+    }
+    .cal-dow {
+      text-align: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-light);
+      padding: 6px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .cal-day {
+      aspect-ratio: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      transition: all var(--transition);
+      position: relative;
+      gap: 3px;
+    }
+    .cal-day:hover { background: var(--primary-light); }
+    .cal-day.other-month { color: var(--text-light); opacity: 0.5; }
+    .cal-day.today {
+      background: var(--primary);
+      color: #fff;
+      font-weight: 700;
+      box-shadow: 0 2px 8px var(--primary-glow);
+    }
+    .cal-day.today:hover { background: var(--primary-hover); }
+    .cal-day.selected {
+      background: var(--primary-light);
+      color: var(--primary);
+      font-weight: 700;
+      outline: 2px solid var(--primary);
+      outline-offset: -2px;
+    }
+    .cal-day.today.selected {
+      background: var(--primary);
+      color: #fff;
+      outline-color: var(--primary-hover);
+    }
+    .cal-dots {
+      display: flex;
+      gap: 3px;
+      height: 5px;
+    }
+    .cal-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+    }
+    .cal-dot.all-done { background: var(--success); }
+    .cal-dot.has-pending { background: var(--warning); }
+    .cal-dot.none-done { background: var(--danger); }
+
+    /* ── Todo Panel ── */
+    .todo-panel { min-width: 0; }
+
+    .selected-date-bar {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      transition: all var(--transition);
+    }
+    .selected-date-bar:hover { box-shadow: var(--shadow-md); }
+    .date-icon {
+      width: 44px; height: 44px;
+      background: linear-gradient(135deg, var(--primary), #a855f7);
+      border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff;
+      font-weight: 800;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .date-info { flex: 1; }
+    .date-info .date-main { font-size: 16px; font-weight: 700; color: var(--text); }
+    .date-info .date-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+    /* ── Add Form ── */
+    .add-form {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      box-shadow: var(--shadow);
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      transition: all var(--transition);
+    }
+    .add-form:focus-within {
+      box-shadow: var(--shadow-md);
+      border-color: var(--primary);
+    }
+    .add-form input[type="text"] {
+      flex: 1;
+      min-width: 200px;
+      height: 44px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0 14px;
+      font-size: 14px;
+      font-family: inherit;
+      color: var(--text);
+      background: var(--surface2);
+      outline: none;
+      transition: all var(--transition);
+    }
+    .add-form input[type="text"]:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow); }
+    .add-form input[type="text"]::placeholder { color: var(--text-light); }
+
+    .priority-select {
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0 12px;
+      font-size: 13px;
+      font-family: inherit;
+      color: var(--text);
+      background: var(--surface2);
+      outline: none;
+      cursor: pointer;
+      height: 44px;
+      transition: all var(--transition);
+    }
+    .priority-select:focus { border-color: var(--primary); }
+
+    .btn-add {
+      height: 44px;
+      padding: 0 20px;
+      background: linear-gradient(135deg, var(--primary), #a855f7);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all var(--transition);
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-add:hover { transform: translateY(-1px); box-shadow: 0 4px 16px var(--primary-glow); }
+    .btn-add:active { transform: translateY(0); }
+
+    /* ── Filter Bar ── */
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .filter-btn {
+      padding: 7px 16px;
+      border-radius: 100px;
+      border: 1.5px solid var(--border);
+      background: var(--surface);
+      font-size: 13px;
+      font-weight: 500;
+      font-family: inherit;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+    .filter-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .filter-btn.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+      box-shadow: 0 2px 8px var(--primary-glow);
+    }
+    .count-badge {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 3px 10px;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-left: auto;
+      font-weight: 500;
+    }
+
+    /* ── Task Cards ── */
+    .task-list { display: flex; flex-direction: column; gap: 10px; }
+    .task-card {
+      background: var(--surface);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow);
+      padding: 14px 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      transition: all var(--transition);
+      border-left: 4px solid transparent;
+      animation: fadeSlideIn 0.25s ease;
+    }
+    @keyframes fadeSlideIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .task-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+    .task-card.done {
+      opacity: 0.7;
+      background: var(--surface2);
+      border-left-color: var(--success) !important;
+    }
+    .task-card.done:hover { opacity: 0.85; }
+    .task-card.priority-high   { border-left-color: var(--danger); }
+    .task-card.priority-medium { border-left-color: var(--warning); }
+    .task-card.priority-low    { border-left-color: var(--text-light); }
+
+    .task-check {
+      width: 22px; height: 22px;
+      border: 2px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      flex-shrink: 0;
+      margin-top: 1px;
+      display: flex; align-items: center; justify-content: center;
+      transition: all var(--transition);
+      background: var(--surface);
+    }
+    .task-check:hover { border-color: var(--success); background: var(--success-light); transform: scale(1.1); }
+    .task-card.done .task-check { border-color: var(--success); background: var(--success); }
+    .task-check svg { display: none; }
+    .task-card.done .task-check svg { display: block; }
+
+    .task-body { flex: 1; min-width: 0; }
+    .task-text {
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--text);
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+    .task-card.done .task-text { text-decoration: line-through; color: var(--text-muted); }
+
+    .task-edit-input {
+      display: none;
+      width: 100%;
+      border: 1.5px solid var(--primary);
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      font-size: 14px;
+      font-family: inherit;
+      color: var(--text);
+      background: var(--surface2);
+      outline: none;
+      line-height: 1.6;
+      box-shadow: 0 0 0 3px var(--primary-glow);
+    }
+
+    .task-meta { display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+    .status-badge {
+      font-size: 11px; font-weight: 600;
+      padding: 2px 8px; border-radius: 100px;
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .status-badge.pending { background: var(--warning-light); color: var(--warning); }
+    .status-badge.done    { background: var(--success-light); color: var(--success); }
+    .priority-badge {
+      font-size: 11px; font-weight: 600;
+      padding: 2px 8px; border-radius: 100px;
+    }
+    .priority-badge.high   { background: var(--danger-light);  color: var(--danger); }
+    .priority-badge.medium { background: var(--warning-light); color: var(--warning); }
+    .priority-badge.low    { background: var(--bg);            color: var(--text-muted); }
+    .task-time { font-size: 11px; color: var(--text-light); }
+
+    .task-actions { display: flex; gap: 4px; flex-shrink: 0; }
+    .action-btn {
+      width: 32px; height: 32px;
+      border: none; border-radius: var(--radius-sm);
+      background: transparent; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; color: var(--text-muted);
+      transition: all var(--transition);
+    }
+    .action-btn:hover { background: var(--bg); transform: scale(1.1); }
+    .action-btn.edit:hover   { color: var(--primary); background: var(--primary-light); }
+    .action-btn.delete:hover { color: var(--danger); background: var(--danger-light); }
+
+    .task-card.editing .task-text { display: none; }
+    .task-card.editing .task-edit-input { display: block; }
+    .task-card.editing .edit-actions { display: flex !important; }
+    .edit-actions { display: none; gap: 6px; margin-top: 8px; }
+    .btn-sm {
+      padding: 6px 14px; font-size: 12px; font-weight: 600;
+      border-radius: var(--radius-sm); border: none; cursor: pointer;
+      transition: all var(--transition); font-family: inherit;
+    }
+    .btn-save   { background: var(--success); color: #fff; }
+    .btn-save:hover { background: #059669; transform: translateY(-1px); }
+    .btn-cancel { background: var(--bg); color: var(--text-muted); border: 1.5px solid var(--border); }
+    .btn-cancel:hover { border-color: var(--text-muted); }
+
+    /* ── Empty State ── */
+    .empty-state { text-align: center; padding: 48px 24px; color: var(--text-muted); }
+    .empty-state svg { opacity: 0.2; margin-bottom: 12px; }
+    .empty-state p { font-size: 15px; font-weight: 600; }
+    .empty-state small { font-size: 13px; color: var(--text-light); display: block; margin-top: 4px; }
+
+    /* ═══════════════════════════════════════════════════════════════
+       DASHBOARD
+    ═══════════════════════════════════════════════════════════════ */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: all var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      border-radius: 3px 3px 0 0;
+    }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    .stat-label { font-size: 13px; color: var(--text-muted); font-weight: 500; }
+    .stat-value { font-size: 32px; font-weight: 800; }
+    .stat-card.total::before   { background: linear-gradient(90deg, var(--primary), #a855f7); }
+    .stat-card.total .stat-value { color: var(--primary); }
+    .stat-card.done::before    { background: var(--success); }
+    .stat-card.done .stat-value { color: var(--success); }
+    .stat-card.pending::before { background: var(--warning); }
+    .stat-card.pending .stat-value { color: var(--warning); }
+    .stat-card.today::before   { background: var(--danger); }
+    .stat-card.today .stat-value { color: var(--danger); }
+
+    .progress-bar-wrap {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+      transition: all var(--transition);
+    }
+    .progress-bar-wrap:hover { box-shadow: var(--shadow-md); }
+    .progress-bar-wrap h3 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+    .progress-track {
+      background: var(--border);
+      border-radius: 100px;
+      height: 14px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary), #a855f7, var(--success));
+      background-size: 200% 100%;
+      border-radius: 100px;
+      transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+      animation: shimmer 3s linear infinite;
+    }
+    @keyframes shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    .progress-label { margin-top: 8px; font-size: 13px; color: var(--text-muted); text-align: right; font-weight: 500; }
+
+    /* ── Chart Card ── */
+    .chart-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+      transition: all var(--transition);
+    }
+    .chart-card:hover { box-shadow: var(--shadow-md); }
+    .chart-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .chart-top h3 { font-size: 15px; font-weight: 700; }
+    .chart-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .chart-period-btns { display: flex; gap: 4px; }
+    .chart-period-btn {
+      padding: 6px 14px;
+      border-radius: 100px;
+      border: 1.5px solid var(--border);
+      background: var(--surface);
+      font-size: 12px;
+      font-weight: 600;
+      font-family: inherit;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+    .chart-period-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .chart-period-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .chart-nav { display: flex; align-items: center; gap: 6px; }
+    .chart-nav-label {
+      font-size: 13px; font-weight: 600;
+      color: var(--text);
+      min-width: 160px;
+      text-align: center;
+    }
+    .chart-wrap { position: relative; height: 280px; }
+    .chart-summary {
+      display: flex;
+      gap: 28px;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .cs-item { display: flex; flex-direction: column; gap: 2px; }
+    .cs-label { font-size: 11px; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+    .cs-value { font-size: 24px; font-weight: 800; }
+
+    .recent-section { margin-top: 24px; }
+    .recent-section h3 { font-size: 15px; font-weight: 700; margin-bottom: 12px; }
+
+    /* ═══════════════════════════════════════════════════════════════
+       TOAST
+    ═══════════════════════════════════════════════════════════════ */
+    .toast-container {
+      position: fixed; bottom: 24px; right: 24px;
+      display: flex; flex-direction: column; gap: 8px; z-index: 9999;
+    }
+    .toast {
+      background: var(--text);
+      color: var(--surface);
+      padding: 12px 20px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: var(--shadow-lg);
+      animation: toastIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      backdrop-filter: blur(12px);
+    }
+    .toast.success { background: var(--success); color: #fff; }
+    .toast.error   { background: var(--danger); color: #fff; }
+    @keyframes toastIn {
+      from { transform: translateX(60px) scale(0.9); opacity: 0; }
+      to   { transform: translateX(0) scale(1); opacity: 1; }
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       RESPONSIVE
+    ═══════════════════════════════════════════════════════════════ */
+    @media (max-width: 900px) {
+      .tasks-layout {
+        grid-template-columns: 1fr;
+      }
+      .calendar-panel {
+        position: static;
+      }
+    }
+    @media (max-width: 600px) {
+      header { padding: 0 12px; height: 56px; }
+      .logo { font-size: 17px; margin-right: 12px; }
+      .nav-tab { padding: 6px 12px; font-size: 13px; }
+      main { padding: 16px 10px; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .chart-top { flex-direction: column; }
+      .chart-nav-label { min-width: 120px; font-size: 12px; }
+      .add-form { flex-direction: column; }
+      .add-form input[type="text"] { min-width: 100%; }
+      .header-actions { gap: 4px; }
+      .header-btn { width: 34px; height: 34px; }
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       SCROLLBAR
+    ═══════════════════════════════════════════════════════════════ */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-light); }
+
+    /* ═══════════════════════════════════════════════════════════════
+       AUTH OVERLAY
+    ═══════════════════════════════════════════════════════════════ */
+    .auth-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 40%, #312e81 70%, #1e293b 100%);
+      transition: opacity 0.5s ease, visibility 0.5s ease;
+    }
+    .auth-overlay.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .auth-overlay::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 20% 50%, rgba(99,102,241,0.15) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 20%, rgba(168,85,247,0.12) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 80%, rgba(56,189,248,0.08) 0%, transparent 50%);
+      pointer-events: none;
+    }
+
+    /* Floating particles */
+    .auth-particles {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    .auth-particle {
+      position: absolute;
+      width: 6px; height: 6px;
+      background: rgba(129,140,248,0.3);
+      border-radius: 50%;
+      animation: floatParticle 12s ease-in-out infinite;
+    }
+    .auth-particle:nth-child(2) { width: 4px; height: 4px; background: rgba(168,85,247,0.25); animation-duration: 16s; animation-delay: -3s; }
+    .auth-particle:nth-child(3) { width: 8px; height: 8px; background: rgba(56,189,248,0.2); animation-duration: 20s; animation-delay: -7s; }
+    .auth-particle:nth-child(4) { width: 5px; height: 5px; background: rgba(99,102,241,0.2); animation-duration: 14s; animation-delay: -5s; }
+    .auth-particle:nth-child(5) { width: 3px; height: 3px; background: rgba(168,85,247,0.3); animation-duration: 18s; animation-delay: -10s; }
+
+    @keyframes floatParticle {
+      0%, 100% { transform: translate(0, 0) scale(1); opacity: 0; }
+      10% { opacity: 1; }
+      50% { transform: translate(100px, -200px) scale(1.5); opacity: 0.6; }
+      90% { opacity: 0.2; }
+    }
+
+    .auth-card {
+      position: relative;
+      background: rgba(255,255,255,0.06);
+      backdrop-filter: blur(24px) saturate(150%);
+      -webkit-backdrop-filter: blur(24px) saturate(150%);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 24px;
+      padding: 48px 40px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow:
+        0 8px 32px rgba(0,0,0,0.3),
+        0 0 80px rgba(99,102,241,0.08),
+        inset 0 1px 0 rgba(255,255,255,0.1);
+      animation: cardAppear 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+      text-align: center;
+    }
+    @keyframes cardAppear {
+      from { opacity: 0; transform: translateY(30px) scale(0.95); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .auth-logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .auth-logo svg {
+      width: 40px; height: 40px;
+      filter: drop-shadow(0 0 12px rgba(99,102,241,0.4));
+    }
+    .auth-logo svg rect, .auth-logo svg path { stroke: #818cf8; }
+    .auth-logo-text {
+      font-size: 28px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #818cf8, #c084fc, #38bdf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .auth-subtitle {
+      color: rgba(255,255,255,0.5);
+      font-size: 15px;
+      font-weight: 500;
+      margin-bottom: 36px;
+      line-height: 1.5;
+    }
+
+    .auth-divider {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin: 28px 0;
+      color: rgba(255,255,255,0.25);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .auth-divider::before, .auth-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+    }
+
+    /* Google Sign-In Button */
+    .google-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      width: 100%;
+      padding: 14px 24px;
+      border-radius: 14px;
+      border: 1.5px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+    .google-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(168,85,247,0.15));
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .google-btn:hover {
+      border-color: rgba(129,140,248,0.4);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(99,102,241,0.25), 0 0 0 1px rgba(129,140,248,0.1);
+    }
+    .google-btn:hover::before { opacity: 1; }
+    .google-btn:active { transform: translateY(0); }
+
+    .google-btn svg {
+      width: 20px; height: 20px;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 1;
+    }
+    .auth-email-form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+    }
+    .auth-email-input {
+      width: 100%;
+      padding: 14px 20px;
+      border-radius: 14px;
+      border: 1.5px solid rgba(255,255,255,0.12);
+      background: rgba(0,0,0,0.2);
+      color: #fff;
+      font-size: 15px;
+      font-family: inherit;
+      outline: none;
+      transition: all 0.3s;
+    }
+    .auth-email-input:focus {
+      border-color: rgba(129,140,248,0.6);
+      box-shadow: 0 0 0 3px rgba(129,140,248,0.15);
+    }
+    .auth-success-msg {
+      padding: 12px;
+      border-radius: 10px;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #34d399;
+      font-size: 13px;
+      text-align: center;
+      line-height: 1.4;
+    }
+    .google-btn span {
+      position: relative;
+      z-index: 1;
+    }
+
+    .auth-footer {
+      margin-top: 32px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.3);
+      line-height: 1.6;
+    }
+    .auth-footer a {
+      color: rgba(129,140,248,0.7);
+      text-decoration: none;
+    }
+    .auth-footer a:hover { color: #818cf8; }
+
+    /* Loading spinner for auth */
+    .auth-loading {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      padding: 20px 0;
+    }
+    .auth-loading.show { display: flex; }
+    .auth-spinner {
+      width: 40px; height: 40px;
+      border: 3px solid rgba(129,140,248,0.2);
+      border-top-color: #818cf8;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .auth-loading-text {
+      color: rgba(255,255,255,0.6);
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       USER MENU (Header)
+    ═══════════════════════════════════════════════════════════════ */
+    .user-menu {
+      position: relative;
+      display: none;
+    }
+    .user-menu.show { display: flex; }
+
+    .user-avatar-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 12px 4px 4px;
+      border-radius: 100px;
+      border: 1.5px solid var(--border);
+      background: var(--surface);
+      cursor: pointer;
+      transition: all var(--transition);
+      font-family: inherit;
+    }
+    .user-avatar-btn:hover {
+      border-color: var(--primary);
+      box-shadow: 0 2px 8px var(--primary-glow);
+    }
+    .user-avatar {
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--primary);
+    }
+    .user-avatar-placeholder {
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), #a855f7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .user-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      max-width: 120px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .user-dropdown {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-md);
+      overflow: hidden;
+      display: none;
+      z-index: 200;
+      min-width: 200px;
+      animation: dropIn 0.15s ease;
+    }
+    .user-dropdown.show { display: block; }
+
+    .user-dropdown-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .user-dropdown-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .user-dropdown-email {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+      word-break: break-all;
+    }
+
+    .user-dropdown-item {
+      padding: 10px 16px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: background 0.1s;
+      border: none;
+      background: transparent;
+      width: 100%;
+      font-family: inherit;
+      text-align: left;
+    }
+    .user-dropdown-item:hover { background: var(--primary-light); }
+    .user-dropdown-item.danger { color: var(--danger); }
+    .user-dropdown-item.danger:hover { background: var(--danger-light); }
+    .user-dropdown-item svg { width: 16px; height: 16px; }
+
+    /* ═══════════════════════════════════════════════════════════════
+       MIGRATION MODAL
+    ═══════════════════════════════════════════════════════════════ */
+    .migration-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 11000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(8px);
+    }
+    .migration-overlay.show { display: flex; }
+
+    .migration-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 32px;
+      width: 100%;
+      max-width: 440px;
+      box-shadow: var(--shadow-lg);
+      animation: cardAppear 0.4s ease;
+      text-align: center;
+    }
+    .migration-icon {
+      width: 56px; height: 56px;
+      background: var(--primary-light);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+      font-size: 28px;
+    }
+    .migration-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    .migration-desc {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+    .migration-count {
+      font-weight: 700;
+      color: var(--primary);
+    }
+    .migration-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+    .migration-btn {
+      padding: 10px 24px;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all var(--transition);
+      border: none;
+    }
+    .migration-btn.primary {
+      background: linear-gradient(135deg, var(--primary), #a855f7);
+      color: #fff;
+    }
+    .migration-btn.primary:hover { transform: translateY(-1px); box-shadow: 0 4px 16px var(--primary-glow); }
+    .migration-btn.secondary {
+      background: var(--bg);
+      color: var(--text-muted);
+      border: 1.5px solid var(--border);
+    }
+    .migration-btn.secondary:hover { border-color: var(--text-muted); }
+
+    /* ═══════════════════════════════════════════════════════════════
+       GLOBAL LOADING OVERLAY (for data fetching)
+    ═══════════════════════════════════════════════════════════════ */
+    .data-loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      gap: 12px;
+      color: var(--text-muted);
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .data-loading .mini-spinner {
+      width: 20px; height: 20px;
+      border: 2px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    /* Hide app content when not authed */
+    .app-content.auth-hidden {
+      display: none;
+    }
+
+    @media (max-width: 600px) {
+      .auth-card {
+        margin: 16px;
+        padding: 32px 24px;
+      }
+      .user-name { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══ AUTH LOGIN OVERLAY ═══ -->
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-particles">
+    <div class="auth-particle" style="top:20%;left:10%"></div>
+    <div class="auth-particle" style="top:60%;left:80%"></div>
+    <div class="auth-particle" style="top:80%;left:30%"></div>
+    <div class="auth-particle" style="top:30%;left:70%"></div>
+    <div class="auth-particle" style="top:50%;left:50%"></div>
+  </div>
+  <div class="auth-card">
+    <div class="auth-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="3"/>
+        <path d="M9 12l2 2 4-4"/>
+      </svg>
+      <span class="auth-logo-text">TaskFlow Pro</span>
+    </div>
+    <p class="auth-subtitle" id="authSubtitle">Quản lý công việc thông minh.<br>Đồng bộ mọi nơi, mọi thiết bị.</p>
+
+    <button class="google-btn" id="googleSignInBtn" onclick="signInWithGoogle()">
+      <svg viewBox="0 0 24 24" width="20" height="20">
+        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+      </svg>
+      <span data-i18n="auth_google_btn">Đăng nhập bằng Google</span>
+    </button>
+
+    <div class="auth-divider" data-i18n="auth_divider">hoặc đăng nhập bằng email</div>
+
+    <div id="authForm" class="auth-email-form">
+      <input type="email" id="authEmailInput" class="auth-email-input" data-i18n-placeholder="auth_email_placeholder" placeholder="Nhập email của bạn..." />
+      <input type="password" id="authPasswordInput" class="auth-email-input" data-i18n-placeholder="auth_pass_placeholder" placeholder="Nhập mật khẩu..." />
+      <button class="google-btn" onclick="signInWithEmail()" id="emailSignInBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+          <polyline points="10 17 15 12 10 7"/>
+          <line x1="15" y1="12" x2="3" y2="12"/>
+        </svg>
+        <span data-i18n="auth_email_btn">Đăng nhập / Đăng ký</span>
+      </button>
+    </div>
+
+    <div class="auth-loading" id="authLoading">
+      <div class="auth-spinner"></div>
+      <span class="auth-loading-text" data-i18n="auth_loading">Đang xác thực...</span>
+    </div>
+
+    <p class="auth-footer" data-i18n="auth_footer">Dữ liệu được bảo mật bởi Supabase.<br>Mỗi tài khoản có dữ liệu riêng biệt.</p>
+  </div>
+</div>
+
+<!-- ═══ MIGRATION MODAL ═══ -->
+<div class="migration-overlay" id="migrationOverlay">
+  <div class="migration-card">
+    <div class="migration-icon">📦</div>
+    <h3 class="migration-title" data-i18n="migrate_title">Phát hiện dữ liệu cũ</h3>
+    <p class="migration-desc" id="migrationDesc">
+      Tìm thấy <span class="migration-count" id="migrationCount">0</span> công việc đã lưu trên thiết bị này.
+      Bạn có muốn đồng bộ lên tài khoản cloud không?
+    </p>
+    <div class="migration-actions">
+      <button class="migration-btn primary" onclick="doMigration()" data-i18n="migrate_yes">Đồng bộ lên cloud</button>
+      <button class="migration-btn secondary" onclick="skipMigration()" data-i18n="migrate_no">Bỏ qua</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ HEADER ═══ -->
+<header class="app-content auth-hidden" id="appHeader">
+  <div class="logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="3"/>
+      <path d="M9 12l2 2 4-4"/>
+    </svg>
+    TaskFlow Pro
+  </div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" id="navTasks" onclick="switchTab('tasks')" data-i18n="tab_tasks">Công việc</button>
+    <button class="nav-tab" id="navDashboard" onclick="switchTab('dashboard')" data-i18n="tab_dashboard">Dashboard</button>
+  </div>
+  <div class="header-actions">
+    <!-- Language toggle -->
+    <div style="position:relative">
+      <button class="header-btn" id="langBtn" onclick="toggleLangDropdown()" title="Language">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M2 12h20"/>
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/>
+        </svg>
+      </button>
+      <div class="lang-dropdown" id="langDropdown">
+        <button class="lang-option active" onclick="setLang('vi')">
+          <span class="flag">🇻🇳</span> Tiếng Việt
+        </button>
+        <button class="lang-option" onclick="setLang('en')">
+          <span class="flag">🇬🇧</span> English
+        </button>
+      </div>
+    </div>
+    <!-- Theme toggle -->
+    <button class="header-btn" id="themeBtn" onclick="toggleTheme()" title="Toggle theme">
+      <svg id="iconSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5"/>
+        <line x1="12" y1="1" x2="12" y2="3"/>
+        <line x1="12" y1="21" x2="12" y2="23"/>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+        <line x1="1" y1="12" x2="3" y2="12"/>
+        <line x1="21" y1="12" x2="23" y2="12"/>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+      </svg>
+      <svg id="iconMoon" style="display:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+    </button>
+    <!-- User Menu -->
+    <div class="user-menu" id="userMenu">
+      <button class="user-avatar-btn" id="userAvatarBtn" onclick="toggleUserDropdown()">
+        <img class="user-avatar" id="userAvatar" src="" alt="" style="display:none"/>
+        <div class="user-avatar-placeholder" id="userAvatarPlaceholder">?</div>
+        <span class="user-name" id="userName"></span>
+      </button>
+      <div class="user-dropdown" id="userDropdown">
+        <div class="user-dropdown-header">
+          <div class="user-dropdown-name" id="userDropdownName"></div>
+          <div class="user-dropdown-email" id="userDropdownEmail"></div>
+        </div>
+        <button class="user-dropdown-item danger" onclick="signOut()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+          <span data-i18n="auth_logout">Đăng xuất</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="app-content auth-hidden" id="appMain">
+
+  <!-- ═══════════════════════════════════════════════════════════
+       TASKS TAB
+  ═══════════════════════════════════════════════════════════ -->
+  <div id="tab-tasks" class="section active">
+    <div class="tasks-layout">
+
+      <!-- Calendar Panel -->
+      <div class="calendar-panel">
+        <div class="cal-header">
+          <span class="cal-title" id="calTitle"></span>
+          <div class="cal-nav">
+            <button class="cal-nav-btn" onclick="shiftMonth(-1)">&#8249;</button>
+            <button class="cal-today-btn" onclick="goCalToday()" data-i18n="today">Hôm nay</button>
+            <button class="cal-nav-btn" onclick="shiftMonth(1)">&#8250;</button>
+          </div>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+      </div>
+
+      <!-- Todo Panel -->
+      <div class="todo-panel">
+        <div class="selected-date-bar">
+          <div class="date-icon" id="dateIconDay"></div>
+          <div class="date-info">
+            <div class="date-main" id="dateMain"></div>
+            <div class="date-sub" id="dateSub"></div>
+          </div>
+        </div>
+
+        <div class="add-form">
+          <input
+            type="text"
+            id="taskInput"
+            data-i18n-placeholder="add_placeholder"
+            placeholder="Nhập công việc mới… (Enter để thêm)"
+            onkeydown="onInputKey(event)"
+          />
+          <select class="priority-select" id="priorityInput">
+            <option value="high">🔴 Cao</option>
+            <option value="medium" selected>🟡 Trung bình</option>
+            <option value="low">⚪ Thấp</option>
+          </select>
+          <button class="btn-add" onclick="addTask()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            <span data-i18n="add_btn">Thêm</span>
+          </button>
+        </div>
+
+        <div class="filter-bar">
+          <button class="filter-btn active" onclick="setFilter('all', this)" data-i18n="filter_all">Tất cả</button>
+          <button class="filter-btn" onclick="setFilter('pending', this)" data-i18n="filter_pending">Đang chờ</button>
+          <button class="filter-btn" onclick="setFilter('done', this)" data-i18n="filter_done">Hoàn thành</button>
+          <span class="count-badge" id="taskCountBadge"></span>
+        </div>
+
+        <div class="task-list" id="taskList"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       DASHBOARD TAB
+  ═══════════════════════════════════════════════════════════ -->
+  <div id="tab-dashboard" class="section">
+    <div class="stats-grid">
+      <div class="stat-card total">
+        <span class="stat-label" data-i18n="stat_total">Tổng công việc</span>
+        <span class="stat-value" id="statTotal">0</span>
+      </div>
+      <div class="stat-card done">
+        <span class="stat-label" data-i18n="stat_done">Hoàn thành</span>
+        <span class="stat-value" id="statDone">0</span>
+      </div>
+      <div class="stat-card pending">
+        <span class="stat-label" data-i18n="stat_pending">Đang chờ</span>
+        <span class="stat-value" id="statPending">0</span>
+      </div>
+      <div class="stat-card today">
+        <span class="stat-label" data-i18n="stat_today">Hôm nay chờ xử lý</span>
+        <span class="stat-value" id="statToday">0</span>
+      </div>
+    </div>
+
+    <div class="progress-bar-wrap">
+      <h3 data-i18n="progress_title">Tiến độ hoàn thành tổng thể</h3>
+      <div class="progress-track">
+        <div class="progress-fill" id="progressFill" style="width:0%"></div>
+      </div>
+      <p class="progress-label" id="progressLabel">0 / 0</p>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-top">
+        <h3 data-i18n="chart_title">Xu hướng tỉ lệ hoàn thành</h3>
+        <div class="chart-controls">
+          <div class="chart-period-btns">
+            <button class="chart-period-btn active" onclick="setChartPeriod('week',this)" data-i18n="period_week">Tuần</button>
+            <button class="chart-period-btn" onclick="setChartPeriod('month',this)" data-i18n="period_month">Tháng</button>
+            <button class="chart-period-btn" onclick="setChartPeriod('year',this)" data-i18n="period_year">Năm</button>
+          </div>
+          <div class="chart-nav">
+            <button class="cal-nav-btn" onclick="shiftChart(-1)">&#8249;</button>
+            <span class="chart-nav-label" id="chartPeriodLabel"></span>
+            <button class="cal-nav-btn" onclick="shiftChart(1)">&#8250;</button>
+            <button class="cal-today-btn" style="font-size:12px;padding:5px 10px" onclick="resetChart()" data-i18n="current">Hiện tại</button>
+          </div>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="completionChart"></canvas>
+      </div>
+      <div class="chart-summary" id="chartSummary"></div>
+    </div>
+
+    <div class="recent-section">
+      <h3 data-i18n="recent_title">Công việc theo ngày (7 ngày gần nhất)</h3>
+      <div id="dailySummary" class="task-list"></div>
+    </div>
+  </div>
+
+</main>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════
+//  SUPABASE CONFIG
+//  ⚠️ THAY THẾ 2 GIÁ TRỊ NÀY BẰNG GIÁ TRỊ TỪ SUPABASE DASHBOARD
+// ══════════════════════════════════════════════════════════════════
+const SUPABASE_URL = 'https://fjfamppyggzsfdluoqcf.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqZmFtcHB5Z2d6c2ZkbHVvcWNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0MDgwODUsImV4cCI6MjA5NTk4NDA4NX0.70U-5a77eJg68kAXH-meEBG-x2I-lAgch082RSTkkgY';
+
+window.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ══════════════════════════════════════════════════════════════════
+//  I18N – INTERNATIONALIZATION
+// ══════════════════════════════════════════════════════════════════
+const i18n = {
+  vi: {
+    tab_tasks: 'Công việc',
+    tab_dashboard: 'Dashboard',
+    today: 'Hôm nay',
+    add_placeholder: 'Nhập công việc mới… (Enter để thêm)',
+    add_btn: 'Thêm',
+    filter_all: 'Tất cả',
+    filter_pending: 'Đang chờ',
+    filter_done: 'Hoàn thành',
+    stat_total: 'Tổng công việc',
+    stat_done: 'Hoàn thành',
+    stat_pending: 'Đang chờ',
+    stat_today: 'Hôm nay chờ xử lý',
+    progress_title: 'Tiến độ hoàn thành tổng thể',
+    chart_title: 'Xu hướng tỉ lệ hoàn thành',
+    period_week: 'Tuần',
+    period_month: 'Tháng',
+    period_year: 'Năm',
+    current: 'Hiện tại',
+    recent_title: 'Công việc theo ngày (7 ngày gần nhất)',
+    priority_high: '🔴 Cao',
+    priority_medium: '🟡 Trung bình',
+    priority_low: '⚪ Thấp',
+    status_done: '✓ Hoàn thành',
+    status_pending: '● Đang chờ',
+    empty_all: 'Chưa có công việc nào',
+    empty_hint: 'Thêm công việc đầu tiên cho ngày này ↑',
+    empty_filter: 'Không có công việc phù hợp',
+    toast_added: 'Đã thêm công việc ✓',
+    toast_deleted: 'Đã xoá công việc',
+    toast_updated: 'Đã cập nhật ✓',
+    toast_completed: 'Hoàn thành! 🎉',
+    toast_empty: 'Vui lòng nhập nội dung',
+    toast_empty_edit: 'Nội dung không được để trống',
+    confirm_delete: 'Xoá công việc này?',
+    save: 'Lưu',
+    cancel: 'Huỷ',
+    tasks_word: 'công việc',
+    total_word: 'tổng',
+    completed_word: 'hoàn thành',
+    pending_word: 'đang chờ',
+    avg: 'Trung bình',
+    highest: 'Cao nhất',
+    lowest: 'Thấp nhất',
+    has_data: 'Có dữ liệu',
+    no_data: 'Không có dữ liệu',
+    chart_label: 'Hoàn thành (%)',
+    chart_tooltip: 'Hoàn thành',
+    no_recent: 'Chưa có dữ liệu',
+    dow: ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'],
+    dow_full: ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'],
+    dow_cal: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
+    months: ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'],
+    month_short: ['T1','T2','T3','T4','T5','T6','T7','T8','T9','T10','T11','T12'],
+    // Auth strings
+    auth_email_placeholder: 'Nhập email của bạn...',
+    auth_pass_placeholder: 'Nhập mật khẩu (để Đăng nhập / Đăng ký)',
+    auth_email_btn: 'Đăng nhập / Đăng ký',
+    auth_google_btn: 'Đăng nhập bằng Google',
+    auth_divider: 'hoặc đăng nhập bằng email',
+    auth_google_error: 'Lỗi đăng nhập Google. Vui lòng thử lại.',
+    auth_email_sent: 'Đăng nhập thành công',
+    auth_email_empty: 'Vui lòng nhập đầy đủ Email & Mật khẩu.',
+    auth_loading: 'Đang xác thực...',
+    auth_footer: 'Dữ liệu được bảo mật bởi Supabase.\nMỗi tài khoản có dữ liệu riêng biệt.',
+    auth_subtitle: 'Quản lý công việc thông minh.\nĐồng bộ mọi nơi, mọi thiết bị.',
+    auth_logout: 'Đăng xuất',
+    auth_login_success: 'Đăng nhập thành công! 🎉',
+    auth_logout_success: 'Đã đăng xuất',
+    auth_error: 'Lỗi đăng nhập. Vui lòng thử lại.',
+    migrate_title: 'Phát hiện dữ liệu cũ',
+    migrate_yes: 'Đồng bộ lên cloud',
+    migrate_no: 'Bỏ qua',
+    migrate_success: 'Đã đồng bộ dữ liệu lên cloud! ✓',
+    migrate_desc: (n) => `Tìm thấy <span class="migration-count">${n}</span> công việc đã lưu trên thiết bị này. Bạn có muốn đồng bộ lên tài khoản cloud không?`,
+    loading_data: 'Đang tải dữ liệu...',
+  },
+  en: {
+    tab_tasks: 'Tasks',
+    tab_dashboard: 'Dashboard',
+    today: 'Today',
+    add_placeholder: 'Add a new task… (Press Enter to add)',
+    add_btn: 'Add',
+    filter_all: 'All',
+    filter_pending: 'Pending',
+    filter_done: 'Done',
+    stat_total: 'Total Tasks',
+    stat_done: 'Completed',
+    stat_pending: 'Pending',
+    stat_today: 'Today Pending',
+    progress_title: 'Overall Completion Progress',
+    chart_title: 'Completion Rate Trend',
+    period_week: 'Week',
+    period_month: 'Month',
+    period_year: 'Year',
+    current: 'Current',
+    recent_title: 'Tasks by Day (Last 7 Days)',
+    priority_high: '🔴 High',
+    priority_medium: '🟡 Medium',
+    priority_low: '⚪ Low',
+    status_done: '✓ Done',
+    status_pending: '● Pending',
+    empty_all: 'No tasks yet',
+    empty_hint: 'Add your first task for this day ↑',
+    empty_filter: 'No matching tasks',
+    toast_added: 'Task added ✓',
+    toast_deleted: 'Task deleted',
+    toast_updated: 'Updated ✓',
+    toast_completed: 'Completed! 🎉',
+    toast_empty: 'Please enter task content',
+    toast_empty_edit: 'Content cannot be empty',
+    confirm_delete: 'Delete this task?',
+    save: 'Save',
+    cancel: 'Cancel',
+    tasks_word: 'tasks',
+    total_word: 'total',
+    completed_word: 'completed',
+    pending_word: 'pending',
+    avg: 'Average',
+    highest: 'Highest',
+    lowest: 'Lowest',
+    has_data: 'Has Data',
+    no_data: 'No data',
+    chart_label: 'Completed (%)',
+    chart_tooltip: 'Completed',
+    no_recent: 'No data yet',
+    dow: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+    dow_full: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+    dow_cal: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    months: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+    month_short: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+    // Auth strings
+    auth_email_placeholder: 'Enter your email...',
+    auth_pass_placeholder: 'Enter password (to Login / Register)',
+    auth_email_btn: 'Login / Register',
+    auth_google_btn: 'Sign in with Google',
+    auth_divider: 'or sign in with email',
+    auth_google_error: 'Google sign-in error. Please try again.',
+    auth_email_sent: 'Login success',
+    auth_email_empty: 'Please enter Email and Password.',
+    auth_loading: 'Authenticating...',
+    auth_footer: 'Data secured by Supabase.\nEach account has separate data.',
+    auth_subtitle: 'Smart task management.\nSync everywhere, on every device.',
+    auth_logout: 'Sign out',
+    auth_login_success: 'Signed in successfully! 🎉',
+    auth_logout_success: 'Signed out',
+    auth_error: 'Login error. Please try again.',
+    migrate_title: 'Local data found',
+    migrate_yes: 'Sync to cloud',
+    migrate_no: 'Skip',
+    migrate_success: 'Data synced to cloud! ✓',
+    migrate_desc: (n) => `Found <span class="migration-count">${n}</span> tasks saved on this device. Would you like to sync them to your cloud account?`,
+    loading_data: 'Loading data...',
+  }
+};
+
+let currentLang = localStorage.getItem('taskflow_lang') || 'vi';
+function t(key) { return (i18n[currentLang] || i18n.vi)[key] || key; }
+
+function applyI18n() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const val = t(el.dataset.i18n);
+    if (typeof val === 'string') {
+      el.innerHTML = val.replace(/\n/g, '<br>');
+    }
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    el.placeholder = t(el.dataset.i18nPlaceholder);
+  });
+  // Update priority select
+  const sel = document.getElementById('priorityInput');
+  if (sel) {
+    sel.options[0].text = t('priority_high');
+    sel.options[1].text = t('priority_medium');
+    sel.options[2].text = t('priority_low');
+  }
+  document.documentElement.lang = currentLang;
+}
+
+function setLang(lang) {
+  currentLang = lang;
+  localStorage.setItem('taskflow_lang', lang);
+  document.querySelectorAll('.lang-option').forEach(o => o.classList.remove('active'));
+  document.querySelector(`.lang-option[onclick="setLang('${lang}')"]`).classList.add('active');
+  closeLangDropdown();
+  applyI18n();
+  renderCalendar();
+  renderTasks();
+  if (document.getElementById('tab-dashboard').classList.contains('active')) {
+    renderDashboard();
+  }
+}
+
+function toggleLangDropdown() {
+  document.getElementById('langDropdown').classList.toggle('show');
+}
+function closeLangDropdown() {
+  document.getElementById('langDropdown').classList.remove('show');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('#langBtn') && !e.target.closest('#langDropdown')) closeLangDropdown();
+  if (!e.target.closest('#userAvatarBtn') && !e.target.closest('#userDropdown')) closeUserDropdown();
+});
+
+// ══════════════════════════════════════════════════════════════════
+//  THEME
+// ══════════════════════════════════════════════════════════════════
+let currentTheme = localStorage.getItem('taskflow_theme') || 'light';
+
+function applyTheme() {
+  document.documentElement.setAttribute('data-theme', currentTheme);
+  document.getElementById('iconSun').style.display  = currentTheme === 'light' ? 'block' : 'none';
+  document.getElementById('iconMoon').style.display = currentTheme === 'dark'  ? 'block' : 'none';
+}
+function toggleTheme() {
+  currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+  localStorage.setItem('taskflow_theme', currentTheme);
+  applyTheme();
+  if (chartInstance) renderChart();
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  AUTHENTICATION
+// ══════════════════════════════════════════════════════════════════
+let currentUser = null;
+
+// In-memory cache: { 'YYYY-MM-DD': [task, ...], ... }
+let tasksCache = {};
+
+async function signInWithGoogle() {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: window.location.origin + window.location.pathname
+    }
+  });
+  if (error) {
+    console.error('Google auth error:', error);
+    showToast(t('auth_google_error') + ': ' + error.message, 'error');
+  }
+}
+
+async function signInWithEmail() {
+  const emailInput = document.getElementById('authEmailInput');
+  const passInput = document.getElementById('authPasswordInput');
+  const email = emailInput.value.trim();
+  const password = passInput.value;
+
+  if (!email || !password) {
+    showToast(t('auth_email_empty'), 'error');
+    if (!email) emailInput.focus();
+    else passInput.focus();
+    return;
+  }
+
+  const btn = document.getElementById('emailSignInBtn');
+  const loading = document.getElementById('authLoading');
+  
+  btn.style.display = 'none';
+  emailInput.style.display = 'none';
+  passInput.style.display = 'none';
+  loading.classList.add('show');
+
+  // Try to sign in first
+  let { data, error } = await window.supabase.auth.signInWithPassword({ email, password });
+
+  if (error && error.message.includes('Invalid login credentials')) {
+    // If user not found or wrong password, try sign up
+    const signUpRes = await window.supabase.auth.signUp({ email, password });
+    error = signUpRes.error;
+    data = signUpRes.data;
+    
+    if (!error && !signUpRes.data.session) {
+      btn.style.display = 'flex';
+      emailInput.style.display = 'block';
+      passInput.style.display = 'block';
+      loading.classList.remove('show');
+      showToast('Đăng ký thành công! Vui lòng kiểm tra hộp thư Email để xác nhận tài khoản.', 'success');
+      return;
+    }
+  }
+
+  loading.classList.remove('show');
+
+  if (error) {
+    btn.style.display = 'flex';
+    emailInput.style.display = 'block';
+    passInput.style.display = 'block';
+    // Dịch lỗi sang tiếng Việt cho dễ hiểu
+    let errorMsg = error.message;
+    if (errorMsg.includes('Email logins are disabled')) errorMsg = 'Chưa bật tính năng Đăng nhập Email trong Supabase.';
+    else if (errorMsg.includes('User already registered')) errorMsg = 'Tài khoản chưa được xác nhận Email.';
+    
+    showToast(t('auth_error') + ': ' + errorMsg, 'error');
+    console.error('Auth error:', error);
+  }
+}
+
+async function signOut() {
+  closeUserDropdown();
+  await supabase.auth.signOut();
+  currentUser = null;
+  tasksCache = {};
+  showAuthUI();
+  showToast(t('auth_logout_success'));
+}
+
+function showAuthUI() {
+  document.getElementById('authOverlay').classList.remove('hidden');
+  document.querySelectorAll('.app-content').forEach(el => el.classList.add('auth-hidden'));
+  document.getElementById('userMenu').classList.remove('show');
+  // Reset auth form state
+  document.getElementById('emailSignInBtn').style.display = 'flex';
+  document.getElementById('authEmailInput').style.display = 'block';
+  document.getElementById('authPasswordInput').style.display = 'block';
+  document.getElementById('authEmailInput').value = '';
+  document.getElementById('authPasswordInput').value = '';
+  document.getElementById('authLoading').classList.remove('show');
+}
+
+function hideAuthUI() {
+  document.getElementById('authOverlay').classList.add('hidden');
+  document.querySelectorAll('.app-content').forEach(el => el.classList.remove('auth-hidden'));
+}
+
+function updateUserUI(user) {
+  if (!user) return;
+  const meta = user.user_metadata || {};
+  const name = meta.full_name || meta.name || user.email?.split('@')[0] || 'User';
+  const avatar = meta.avatar_url || meta.picture || '';
+  const email = user.email || '';
+
+  document.getElementById('userName').textContent = name;
+  document.getElementById('userDropdownName').textContent = name;
+  document.getElementById('userDropdownEmail').textContent = email;
+
+  const avatarImg = document.getElementById('userAvatar');
+  const avatarPlaceholder = document.getElementById('userAvatarPlaceholder');
+
+  if (avatar) {
+    avatarImg.src = avatar;
+    avatarImg.style.display = 'block';
+    avatarPlaceholder.style.display = 'none';
+  } else {
+    avatarImg.style.display = 'none';
+    avatarPlaceholder.style.display = 'flex';
+    avatarPlaceholder.textContent = name.charAt(0).toUpperCase();
+  }
+
+  document.getElementById('userMenu').classList.add('show');
+}
+
+function toggleUserDropdown() {
+  document.getElementById('userDropdown').classList.toggle('show');
+}
+function closeUserDropdown() {
+  document.getElementById('userDropdown').classList.remove('show');
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  SUPABASE DATA LAYER (replaces localStorage)
+// ══════════════════════════════════════════════════════════════════
+async function loadTasksForDate(date) {
+  if (tasksCache[date] !== undefined) return tasksCache[date];
+
+  const { data, error } = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('task_date', date)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('Load tasks error:', error);
+    return [];
+  }
+
+  // Map DB columns to app format
+  const tasks = (data || []).map(row => ({
+    id: row.id,
+    text: row.text,
+    priority: row.priority,
+    done: row.done,
+    createdAt: row.created_at,
+    doneAt: row.done_at,
+    updatedAt: row.updated_at,
+  }));
+
+  tasksCache[date] = tasks;
+  return tasks;
+}
+
+async function loadAllTasks() {
+  const { data, error } = await supabase
+    .from('tasks')
+    .select('*')
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('Load all tasks error:', error);
+    return {};
+  }
+
+  // Group by date
+  const grouped = {};
+  (data || []).forEach(row => {
+    const date = row.task_date;
+    if (!grouped[date]) grouped[date] = [];
+    grouped[date].push({
+      id: row.id,
+      text: row.text,
+      priority: row.priority,
+      done: row.done,
+      createdAt: row.created_at,
+      doneAt: row.done_at,
+      updatedAt: row.updated_at,
+    });
+  });
+
+  tasksCache = grouped;
+  return grouped;
+}
+
+async function addTaskToDb(date, text, priority) {
+  const { data, error } = await supabase
+    .from('tasks')
+    .insert({
+      user_id: currentUser.id,
+      task_date: date,
+      text,
+      priority,
+      done: false,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Add task error:', error);
+    return null;
+  }
+
+  const task = {
+    id: data.id,
+    text: data.text,
+    priority: data.priority,
+    done: data.done,
+    createdAt: data.created_at,
+    doneAt: data.done_at,
+    updatedAt: data.updated_at,
+  };
+
+  // Update cache
+  if (!tasksCache[date]) tasksCache[date] = [];
+  tasksCache[date].push(task);
+
+  return task;
+}
+
+async function updateTaskInDb(taskId, updates) {
+  const dbUpdates = {};
+  if (updates.text !== undefined) dbUpdates.text = updates.text;
+  if (updates.done !== undefined) dbUpdates.done = updates.done;
+  if (updates.doneAt !== undefined) dbUpdates.done_at = updates.doneAt;
+  if (updates.priority !== undefined) dbUpdates.priority = updates.priority;
+  dbUpdates.updated_at = new Date().toISOString();
+
+  const { error } = await supabase
+    .from('tasks')
+    .update(dbUpdates)
+    .eq('id', taskId);
+
+  if (error) {
+    console.error('Update task error:', error);
+    return false;
+  }
+
+  // Update cache
+  for (const date in tasksCache) {
+    const task = tasksCache[date].find(t => t.id === taskId);
+    if (task) {
+      Object.assign(task, updates, { updatedAt: dbUpdates.updated_at });
+      break;
+    }
+  }
+
+  return true;
+}
+
+async function deleteTaskFromDb(taskId) {
+  const { error } = await supabase
+    .from('tasks')
+    .delete()
+    .eq('id', taskId);
+
+  if (error) {
+    console.error('Delete task error:', error);
+    return false;
+  }
+
+  // Update cache
+  for (const date in tasksCache) {
+    const idx = tasksCache[date].findIndex(t => t.id === taskId);
+    if (idx >= 0) {
+      tasksCache[date].splice(idx, 1);
+      break;
+    }
+  }
+
+  return true;
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  DATA MIGRATION (localStorage → Supabase)
+// ══════════════════════════════════════════════════════════════════
+const OLD_STORE_KEY = 'taskflow_pro_v1';
+
+function getLocalData() {
+  try {
+    return JSON.parse(localStorage.getItem(OLD_STORE_KEY)) || {};
+  } catch {
+    return {};
+  }
+}
+
+function countLocalTasks() {
+  const data = getLocalData();
+  let count = 0;
+  Object.values(data).forEach(tasks => { count += tasks.length; });
+  return count;
+}
+
+async function checkAndOfferMigration() {
+  const count = countLocalTasks();
+  if (count === 0) return;
+
+  // Check if user already migrated
+  const migrated = localStorage.getItem('taskflow_migrated_' + currentUser.id);
+  if (migrated) return;
+
+  // Show migration modal
+  document.getElementById('migrationCount').textContent = count;
+  document.getElementById('migrationDesc').innerHTML = t('migrate_desc')(count);
+  document.getElementById('migrationOverlay').classList.add('show');
+}
+
+async function doMigration() {
+  document.getElementById('migrationOverlay').classList.remove('show');
+
+  const localData = getLocalData();
+  const rows = [];
+
+  for (const [date, tasks] of Object.entries(localData)) {
+    for (const task of tasks) {
+      rows.push({
+        user_id: currentUser.id,
+        task_date: date,
+        text: task.text,
+        priority: task.priority || 'medium',
+        done: !!task.done,
+        done_at: task.doneAt || null,
+        created_at: task.createdAt || new Date().toISOString(),
+      });
+    }
+  }
+
+  if (rows.length > 0) {
+    // Insert in batches of 100
+    for (let i = 0; i < rows.length; i += 100) {
+      const batch = rows.slice(i, i + 100);
+      const { error } = await supabase.from('tasks').insert(batch);
+      if (error) {
+        console.error('Migration batch error:', error);
+        showToast('Migration error: ' + error.message, 'error');
+        return;
+      }
+    }
+  }
+
+  // Mark as migrated
+  localStorage.setItem('taskflow_migrated_' + currentUser.id, 'true');
+  // Clear old data
+  localStorage.removeItem(OLD_STORE_KEY);
+
+  // Reload data
+  tasksCache = {};
+  await initAppData();
+  showToast(t('migrate_success'), 'success');
+}
+
+function skipMigration() {
+  document.getElementById('migrationOverlay').classList.remove('show');
+  localStorage.setItem('taskflow_migrated_' + currentUser.id, 'skipped');
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  FAKE DATA (for chart demo — historical only)
+// ══════════════════════════════════════════════════════════════════
+const FAKE_TASKS = [
+  'Review code PR','Write unit tests','Update docs','Fix null pointer bug',
+  'Daily standup','Deploy new feature','Refactor service','Check emails',
+  'Update tickets','Client requirements','Design UI mockup','Deploy staging',
+  'API performance check','Database backup','Weekly report','Code review',
+  'Optimize SQL','Setup CI/CD','Integration test','Handle QA feedback',
+  'Setup dev env','Production logs','Sprint planning','Demo to PM',
+];
+
+function hash32(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = (h * 16777619) >>> 0; }
+  return h;
+}
+
+function getFakeTasksForDate(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  if (isNaN(d)) return [];
+  const today = new Date(); today.setHours(0,0,0,0);
+  if (d >= today) return [];
+  const h0 = hash32(dateStr);
+  const dow = d.getDay();
+  const isWeekend = dow === 0 || dow === 6;
+  if (h0 % 100 < (isWeekend ? 50 : 15)) return [];
+  const count = (h0 % 5) + (isWeekend ? 1 : 3);
+  const daysAgo = Math.floor((today - d) / 86400000);
+  const basePct = 82 - (daysAgo / (365*5)) * 40;
+  const tasks = [];
+  for (let i = 0; i < count; i++) {
+    const th = hash32(dateStr + '_' + i);
+    const noise = ((th % 41) - 20);
+    const donePct = Math.max(5, Math.min(98, basePct + noise));
+    tasks.push({
+      id: `fake_${dateStr}_${i}`,
+      text: FAKE_TASKS[th % FAKE_TASKS.length],
+      priority: ['high','medium','low'][(th >> 5) % 3],
+      done: (th % 100) < donePct,
+      createdAt: new Date(d.getFullYear(), d.getMonth(), d.getDate(), 8 + (th % 10)).toISOString(),
+    });
+  }
+  return tasks;
+}
+
+function getEffectiveTasksForChart(dateStr) {
+  const real = tasksCache[dateStr];
+  return real !== undefined ? real : getFakeTasksForDate(dateStr);
+}
+
+function pct(tasks) {
+  if (!tasks.length) return null;
+  return Math.round(tasks.filter(t => t.done).length / tasks.length * 100);
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════════════════
+let selectedDate = todayStr();
+let calYear, calMonth; // for calendar navigation
+let currentFilter = 'all';
+
+function todayStr() { return new Date().toISOString().slice(0, 10); }
+
+function initCalendarMonth() {
+  const d = new Date(selectedDate);
+  calYear = d.getFullYear();
+  calMonth = d.getMonth();
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  CALENDAR
+// ══════════════════════════════════════════════════════════════════
+function renderCalendar() {
+  const grid = document.getElementById('calGrid');
+  const titleEl = document.getElementById('calTitle');
+
+  // Title
+  titleEl.textContent = `${t('months')[calMonth]} ${calYear}`;
+
+  // Build grid
+  let html = '';
+
+  // Day-of-week headers (Mon first)
+  const dowLabels = t('dow_cal');
+  for (let i = 0; i < 7; i++) {
+    html += `<div class="cal-dow">${dowLabels[i]}</div>`;
+  }
+
+  // First day of month
+  const firstDay = new Date(calYear, calMonth, 1);
+  let startDow = firstDay.getDay(); // 0=Sun
+  startDow = startDow === 0 ? 6 : startDow - 1; // Convert to Mon=0
+
+  // Days in month
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+
+  // Previous month fill
+  const prevMonthDays = new Date(calYear, calMonth, 0).getDate();
+  for (let i = startDow - 1; i >= 0; i--) {
+    const day = prevMonthDays - i;
+    const m = calMonth === 0 ? 11 : calMonth - 1;
+    const y = calMonth === 0 ? calYear - 1 : calYear;
+    const ds = `${y}-${String(m+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    html += `<div class="cal-day other-month" onclick="selectCalDate('${ds}')">${day}</div>`;
+  }
+
+  // Current month days
+  const todayS = todayStr();
+  for (let day = 1; day <= daysInMonth; day++) {
+    const ds = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const isToday = ds === todayS;
+    const isSelected = ds === selectedDate;
+    let cls = 'cal-day';
+    if (isToday) cls += ' today';
+    if (isSelected) cls += ' selected';
+
+    // Task dots (from cache)
+    const tasks = tasksCache[ds] || [];
+    let dots = '';
+    if (tasks.length > 0) {
+      const doneCount = tasks.filter(t => t.done).length;
+      if (doneCount === tasks.length) {
+        dots = '<div class="cal-dots"><div class="cal-dot all-done"></div></div>';
+      } else if (doneCount > 0) {
+        dots = '<div class="cal-dots"><div class="cal-dot has-pending"></div></div>';
+      } else {
+        dots = '<div class="cal-dots"><div class="cal-dot none-done"></div></div>';
+      }
+    }
+
+    html += `<div class="${cls}" onclick="selectCalDate('${ds}')">${day}${dots}</div>`;
+  }
+
+  // Next month fill
+  const totalCells = startDow + daysInMonth;
+  const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+  for (let i = 1; i <= remaining; i++) {
+    const m = calMonth === 11 ? 0 : calMonth + 1;
+    const y = calMonth === 11 ? calYear + 1 : calYear;
+    const ds = `${y}-${String(m+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
+    html += `<div class="cal-day other-month" onclick="selectCalDate('${ds}')">${i}</div>`;
+  }
+
+  grid.innerHTML = html;
+}
+
+async function selectCalDate(ds) {
+  selectedDate = ds;
+  // If selected date is in a different month, navigate to it
+  const d = new Date(ds);
+  if (d.getMonth() !== calMonth || d.getFullYear() !== calYear) {
+    calYear = d.getFullYear();
+    calMonth = d.getMonth();
+  }
+  renderCalendar();
+  updateDateBar();
+  await renderTasks();
+}
+
+function shiftMonth(delta) {
+  calMonth += delta;
+  if (calMonth < 0) { calMonth = 11; calYear--; }
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  renderCalendar();
+}
+
+async function goCalToday() {
+  selectedDate = todayStr();
+  initCalendarMonth();
+  renderCalendar();
+  updateDateBar();
+  await renderTasks();
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  DATE BAR
+// ══════════════════════════════════════════════════════════════════
+function updateDateBar() {
+  const [y, m, d] = selectedDate.split('-').map(Number);
+  const date = new Date(y, m-1, d);
+  const dowFull = t('dow_full');
+  const dayOfWeek = dowFull[date.getDay()];
+
+  document.getElementById('dateIconDay').textContent = d;
+
+  const isToday = selectedDate === todayStr();
+  document.getElementById('dateMain').textContent =
+    `${dayOfWeek}, ${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}/${y}` +
+    (isToday ? ` (${t('today')})` : '');
+
+  const tasks = tasksCache[selectedDate] || [];
+  const doneC = tasks.filter(t => t.done).length;
+  document.getElementById('dateSub').textContent =
+    tasks.length > 0
+      ? `${tasks.length} ${t('tasks_word')} · ${doneC} ${t('completed_word')} · ${tasks.length - doneC} ${t('pending_word')}`
+      : t('empty_all');
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  TASK CRUD (async, using Supabase)
+// ══════════════════════════════════════════════════════════════════
+async function addTask() {
+  const input = document.getElementById('taskInput');
+  const priority = document.getElementById('priorityInput').value;
+  const text = input.value.trim();
+  if (!text) { showToast(t('toast_empty'), 'error'); return; }
+
+  input.disabled = true;
+  const task = await addTaskToDb(selectedDate, text, priority);
+  input.disabled = false;
+
+  if (!task) {
+    showToast('Error adding task', 'error');
+    return;
+  }
+
+  input.value = '';
+  renderTasks();
+  renderCalendar();
+  updateDateBar();
+  showToast(t('toast_added'), 'success');
+}
+
+async function toggleTask(id) {
+  const tasks = tasksCache[selectedDate] || [];
+  const task = tasks.find(t => t.id === id);
+  if (!task) return;
+
+  const newDone = !task.done;
+  const updates = {
+    done: newDone,
+    doneAt: newDone ? new Date().toISOString() : null,
+  };
+
+  const success = await updateTaskInDb(id, updates);
+  if (!success) return;
+
+  renderTasks();
+  renderCalendar();
+  updateDateBar();
+  if (newDone) showToast(t('toast_completed'), 'success');
+}
+
+async function deleteTask(id) {
+  if (!confirm(t('confirm_delete'))) return;
+  const success = await deleteTaskFromDb(id);
+  if (!success) return;
+
+  renderTasks();
+  renderCalendar();
+  updateDateBar();
+  showToast(t('toast_deleted'));
+}
+
+function startEdit(id) {
+  const card = document.querySelector(`[data-id="${id}"]`);
+  const tasks = tasksCache[selectedDate] || [];
+  const task = tasks.find(t => t.id === id);
+  if (!card || !task) return;
+  card.querySelector('.task-edit-input').value = task.text;
+  card.classList.add('editing');
+  card.querySelector('.task-edit-input').focus();
+}
+function cancelEdit(id) {
+  const card = document.querySelector(`[data-id="${id}"]`);
+  if (card) card.classList.remove('editing');
+}
+async function saveEdit(id) {
+  const card = document.querySelector(`[data-id="${id}"]`);
+  if (!card) return;
+  const text = card.querySelector('.task-edit-input').value.trim();
+  if (!text) { showToast(t('toast_empty_edit'), 'error'); return; }
+
+  const success = await updateTaskInDb(id, { text });
+  if (!success) return;
+
+  renderTasks();
+  showToast(t('toast_updated'), 'success');
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  FILTER & RENDER TASKS
+// ══════════════════════════════════════════════════════════════════
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTasks();
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fmtTime(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleTimeString(currentLang === 'vi' ? 'vi-VN' : 'en-US', { hour:'2-digit', minute:'2-digit' });
+}
+
+const PRIORITY_LABEL_KEY = { high:'priority_high', medium:'priority_medium', low:'priority_low' };
+
+async function renderTasks() {
+  // Ensure tasks for selected date are loaded
+  const all = await loadTasksForDate(selectedDate);
+  const tasks = currentFilter === 'pending' ? all.filter(t => !t.done)
+    : currentFilter === 'done' ? all.filter(t => t.done) : all;
+
+  document.getElementById('taskCountBadge').textContent = `${tasks.length} / ${all.length} ${t('tasks_word')}`;
+
+  const list = document.getElementById('taskList');
+  if (!tasks.length) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round">
+          <rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 12h6M12 9v6"/>
+        </svg>
+        <p>${currentFilter === 'all' ? t('empty_all') : t('empty_filter')}</p>
+        <small>${currentFilter === 'all' ? t('empty_hint') : ''}</small>
+      </div>`;
+    return;
+  }
+
+  list.innerHTML = tasks.map(task => `
+    <div class="task-card ${task.done?'done':''} priority-${task.priority}" data-id="${task.id}">
+      <div class="task-check" onclick="toggleTask('${task.id}')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+      <div class="task-body">
+        <div class="task-text">${escHtml(task.text)}</div>
+        <input class="task-edit-input" type="text" value="${escHtml(task.text)}" onkeydown="onEditKey(event,'${task.id}')"/>
+        <div class="task-meta">
+          <span class="status-badge ${task.done?'done':'pending'}">${task.done ? t('status_done') : t('status_pending')}</span>
+          <span class="priority-badge ${task.priority}">${t(PRIORITY_LABEL_KEY[task.priority])}</span>
+          <span class="task-time">${fmtTime(task.createdAt)}</span>
+        </div>
+        <div class="edit-actions">
+          <button class="btn-sm btn-save" onclick="saveEdit('${task.id}')">${t('save')}</button>
+          <button class="btn-sm btn-cancel" onclick="cancelEdit('${task.id}')">${t('cancel')}</button>
+        </div>
+      </div>
+      <div class="task-actions">
+        ${!task.done?`<button class="action-btn edit" onclick="startEdit('${task.id}')" title="Edit">✏️</button>`:''}
+        <button class="action-btn delete" onclick="deleteTask('${task.id}')" title="Delete">🗑️</button>
+      </div>
+    </div>`).join('');
+}
+
+function onInputKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addTask(); }
+}
+function onEditKey(e, id) {
+  if (e.key === 'Enter') { e.preventDefault(); saveEdit(id); }
+  if (e.key === 'Escape') cancelEdit(id);
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  CHART
+// ══════════════════════════════════════════════════════════════════
+let chartPeriod = 'week';
+let chartOffset = 0;
+let chartInstance = null;
+
+function setChartPeriod(period, btn) {
+  chartPeriod = period;
+  chartOffset = 0;
+  document.querySelectorAll('.chart-period-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderChart();
+}
+function shiftChart(delta) { chartOffset += delta; renderChart(); }
+function resetChart()      { chartOffset = 0;      renderChart(); }
+
+function getChartDataset() {
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  if (chartPeriod === 'week') {
+    const mon = new Date(today);
+    const dow = mon.getDay() || 7;
+    mon.setDate(mon.getDate() - dow + 1 + chartOffset * 7);
+
+    const labels = [], values = [];
+    const DAYS = t('dow_cal');
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(mon); d.setDate(mon.getDate() + i);
+      const ds = d.toISOString().slice(0,10);
+      labels.push(`${DAYS[i]} ${d.getDate()}/${d.getMonth()+1}`);
+      values.push(pct(getEffectiveTasksForChart(ds)));
+    }
+    const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+    const periodLabel = `${mon.getDate()}/${mon.getMonth()+1} – ${sun.getDate()}/${sun.getMonth()+1}/${sun.getFullYear()}`;
+    return { labels, values, periodLabel };
+  }
+
+  if (chartPeriod === 'month') {
+    const ref = new Date(today.getFullYear(), today.getMonth() + chartOffset, 1);
+    const dim = new Date(ref.getFullYear(), ref.getMonth() + 1, 0).getDate();
+    const labels = [], values = [];
+    for (let day = 1; day <= dim; day++) {
+      const d = new Date(ref.getFullYear(), ref.getMonth(), day);
+      const ds = d.toISOString().slice(0,10);
+      labels.push(String(day));
+      values.push(pct(getEffectiveTasksForChart(ds)));
+    }
+    return { labels, values, periodLabel: `${t('months')[ref.getMonth()]} ${ref.getFullYear()}` };
+  }
+
+  // Year
+  const year = today.getFullYear() + chartOffset;
+  const labels = t('month_short');
+  const values = [];
+  for (let m = 0; m < 12; m++) {
+    const dim = new Date(year, m + 1, 0).getDate();
+    let total = 0, done = 0;
+    for (let day = 1; day <= dim; day++) {
+      const ds = new Date(year, m, day).toISOString().slice(0,10);
+      const tasks = getEffectiveTasksForChart(ds);
+      total += tasks.length;
+      done += tasks.filter(t => t.done).length;
+    }
+    values.push(total ? Math.round(done / total * 100) : null);
+  }
+  return { labels, values, periodLabel: `${year}` };
+}
+
+function renderChart() {
+  const { labels, values, periodLabel } = getChartDataset();
+  document.getElementById('chartPeriodLabel').textContent = periodLabel;
+
+  const valid = values.filter(v => v !== null);
+  const avg = valid.length ? Math.round(valid.reduce((a,b)=>a+b,0)/valid.length) : 0;
+  const max = valid.length ? Math.max(...valid) : 0;
+  const min = valid.length ? Math.min(...valid) : 0;
+
+  document.getElementById('chartSummary').innerHTML = `
+    <div class="cs-item">
+      <span class="cs-label">${t('avg')}</span>
+      <span class="cs-value" style="color:var(--primary)">${avg}%</span>
+    </div>
+    <div class="cs-item">
+      <span class="cs-label">${t('highest')}</span>
+      <span class="cs-value" style="color:var(--success)">${max}%</span>
+    </div>
+    <div class="cs-item">
+      <span class="cs-label">${t('lowest')}</span>
+      <span class="cs-value" style="color:var(--danger)">${min}%</span>
+    </div>
+    <div class="cs-item">
+      <span class="cs-label">${t('has_data')}</span>
+      <span class="cs-value" style="color:var(--text-muted);font-size:18px">${valid.length}/${values.length}</span>
+    </div>`;
+
+  const canvas = document.getElementById('completionChart');
+  const ctx = canvas.getContext('2d');
+
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+
+  const isDark = currentTheme === 'dark';
+  const grad = ctx.createLinearGradient(0, 0, 0, 280);
+  grad.addColorStop(0, isDark ? 'rgba(129,140,248,0.3)' : 'rgba(99,102,241,0.25)');
+  grad.addColorStop(1, isDark ? 'rgba(129,140,248,0.0)' : 'rgba(99,102,241,0.0)');
+
+  const gridColor = isDark ? 'rgba(148,163,184,0.1)' : '#e2e8f0';
+  const tickColor = isDark ? '#64748b' : '#94a3b8';
+  const lineColor = isDark ? '#818cf8' : '#6366f1';
+
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: t('chart_label'),
+        data: values,
+        borderColor: lineColor,
+        backgroundColor: grad,
+        borderWidth: 2.5,
+        pointBackgroundColor: values.map(v =>
+          v === null ? 'transparent' : v >= 75 ? '#10b981' : v >= 50 ? '#f59e0b' : '#ef4444'
+        ),
+        pointBorderColor: isDark ? '#1e293b' : '#fff',
+        pointBorderWidth: 2,
+        pointRadius: values.map(v => v === null ? 0 : 5),
+        pointHoverRadius: 7,
+        tension: 0.4,
+        fill: true,
+        spanGaps: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: isDark ? '#334155' : '#1e293b',
+          titleFont: { size: 12, family: 'Inter' },
+          bodyFont: { size: 13, family: 'Inter' },
+          padding: 12,
+          cornerRadius: 8,
+          callbacks: {
+            label: c => c.parsed.y === null
+              ? t('no_data')
+              : `${t('chart_tooltip')}: ${c.parsed.y}%`,
+          },
+        },
+      },
+      scales: {
+        y: {
+          min: 0, max: 100,
+          ticks: { callback: v => v + '%', stepSize: 25, font: { size: 11, family: 'Inter' }, color: tickColor },
+          grid: { color: gridColor },
+          border: { display: false },
+        },
+        x: {
+          ticks: {
+            font: { size: 11, family: 'Inter' }, color: tickColor,
+            maxRotation: 45, autoSkip: true,
+            maxTicksLimit: chartPeriod === 'month' ? 15 : 20,
+          },
+          grid: { display: false },
+          border: { display: false },
+        },
+      },
+    },
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  DASHBOARD
+// ══════════════════════════════════════════════════════════════════
+async function renderDashboard() {
+  const todayS = todayStr();
+  let total = 0, done = 0;
+
+  // Use cached data
+  Object.values(tasksCache).forEach(tasks => {
+    total += tasks.length;
+    done += tasks.filter(t => t.done).length;
+  });
+
+  const todayPending = (tasksCache[todayS] || []).filter(t => !t.done).length;
+
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statDone').textContent = done;
+  document.getElementById('statPending').textContent = total - done;
+  document.getElementById('statToday').textContent = todayPending;
+
+  const p = total ? Math.round(done / total * 100) : 0;
+  document.getElementById('progressFill').style.width = p + '%';
+  document.getElementById('progressLabel').textContent = `${done} / ${total} ${t('tasks_word')} (${p}%)`;
+
+  // Last 7 days
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    days.push(d.toISOString().slice(0,10));
+  }
+  const rows = days.map(ds => {
+    const tasks = tasksCache[ds] || [];
+    if (!tasks.length) return '';
+    const dc = tasks.filter(t => t.done).length;
+    const pend = tasks.length - dc;
+    const perc = Math.round(dc / tasks.length * 100);
+    const [y,m,d] = ds.split('-').map(Number);
+    const date = new Date(y,m-1,d);
+    const dowFull = t('dow_full');
+
+    return `
+      <div class="task-card" style="cursor:pointer" onclick="goToDate('${ds}')">
+        <div class="task-body">
+          <div class="task-text" style="font-weight:700">${dowFull[date.getDay()]}, ${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}/${y}${ds===todayS ? ' ('+t('today')+')' : ''}</div>
+          <div class="task-meta">
+            <span class="status-badge done">${dc} ${t('completed_word')}</span>
+            ${pend ? `<span class="status-badge pending">${pend} ${t('pending_word')}</span>` : ''}
+            <span class="task-time">${tasks.length} ${t('total_word')} • ${perc}%</span>
+          </div>
+          <div class="progress-track" style="margin-top:8px;height:6px">
+            <div class="progress-fill" style="width:${perc}%"></div>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('dailySummary').innerHTML =
+    rows || `<div class="empty-state"><p>${t('no_recent')}</p></div>`;
+
+  renderChart();
+}
+
+async function goToDate(ds) {
+  selectedDate = ds;
+  initCalendarMonth();
+  switchTab('tasks');
+  renderCalendar();
+  updateDateBar();
+  await renderTasks();
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  TABS & TOAST
+// ══════════════════════════════════════════════════════════════════
+function switchTab(tab) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.getElementById(tab === 'tasks' ? 'navTasks' : 'navDashboard').classList.add('active');
+  if (tab === 'dashboard') renderDashboard();
+}
+
+function showToast(msg, type = '') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = msg;
+  document.getElementById('toastContainer').appendChild(el);
+  setTimeout(() => {
+    el.style.transition = 'opacity 0.3s, transform 0.3s';
+    el.style.opacity = '0';
+    el.style.transform = 'translateX(40px)';
+    setTimeout(() => el.remove(), 300);
+  }, 2500);
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  APP INITIALIZATION
+// ══════════════════════════════════════════════════════════════════
+async function initAppData() {
+  // Load all tasks from Supabase into cache
+  await loadAllTasks();
+
+  initCalendarMonth();
+  renderCalendar();
+  updateDateBar();
+  await renderTasks();
+}
+
+async function handleAuthState(session) {
+  if (session?.user) {
+    currentUser = session.user;
+    updateUserUI(currentUser);
+    hideAuthUI();
+
+    // Load data and render
+    await initAppData();
+
+    // Check for local data migration
+    await checkAndOfferMigration();
+  } else {
+    currentUser = null;
+    showAuthUI();
+  }
+}
+
+// Listen for auth state changes
+supabase.auth.onAuthStateChange(async (event, session) => {
+  if (event === 'SIGNED_IN' && session?.user) {
+    await handleAuthState(session);
+    showToast(t('auth_login_success'), 'success');
+  } else if (event === 'SIGNED_OUT') {
+    handleAuthState(null);
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════════════════
+applyTheme();
+applyI18n();
+
+// Check for existing session
+(async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  await handleAuthState(session);
+})();
+</script>
+</body>
+</html>
