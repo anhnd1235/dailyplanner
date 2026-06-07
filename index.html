@@ -781,69 +781,424 @@
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: var(--text-light); }
-  
-    /* ── Auth UI ── */
-    .user-profile {
-      display: flex; align-items: center; gap: 8px;
-      padding: 4px 8px; border-radius: var(--radius-sm);
-      cursor: pointer; transition: background 0.2s;
-    }
-    .user-profile:hover { background: var(--surface2); }
-    .user-profile .avatar {
-      width: 32px; height: 32px; border-radius: 50%;
-      background: var(--primary); color: #fff;
-      display: flex; align-items: center; justify-content: center;
-      font-weight: 600; font-size: 14px; object-fit: cover;
-    }
-    .user-name { font-size: 14px; font-weight: 600; }
-    
+  /* ═══════════════════════════════════════════════════════════════
+       AUTH OVERLAY
+    ═══════════════════════════════════════════════════════════════ */
     .auth-overlay {
-      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.5); backdrop-filter: blur(8px);
-      display: flex; align-items: center; justify-content: center;
-      z-index: 9999;
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 40%, #312e81 70%, #1e293b 100%);
+      transition: opacity 0.5s ease, visibility 0.5s ease;
     }
-    .auth-box {
-      background: var(--surface); padding: 32px; border-radius: var(--radius);
-      width: 90%; max-width: 400px; text-align: center; box-shadow: var(--shadow-lg);
+    .auth-overlay.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
     }
-    .auth-title { font-size: 24px; font-weight: 800; margin-bottom: 8px; }
-    .auth-subtitle { color: var(--text-muted); font-size: 14px; margin-bottom: 24px; white-space: pre-wrap; }
-    .auth-btn {
-      width: 100%; height: 48px; border-radius: var(--radius-sm);
-      display: flex; align-items: center; justify-content: center; gap: 12px;
-      font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+    .auth-overlay::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 20% 50%, rgba(99,102,241,0.15) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 20%, rgba(168,85,247,0.12) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 80%, rgba(56,189,248,0.08) 0%, transparent 50%);
+      pointer-events: none;
     }
-    .btn-google {
-      background: #fff; color: #3c4043; border: 1px solid #dadce0; margin-bottom: 16px;
-    }
-    .btn-google:hover { background: #f8f9fa; box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3); }
-    .auth-footer { margin-top: 24px; font-size: 12px; color: var(--text-light); }
-</style>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    /* Floating particles */
+    .auth-particles {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    .auth-particle {
+      position: absolute;
+      width: 6px; height: 6px;
+      background: rgba(129,140,248,0.3);
+      border-radius: 50%;
+      animation: floatParticle 12s ease-in-out infinite;
+    }
+    .auth-particle:nth-child(2) { width: 4px; height: 4px; background: rgba(168,85,247,0.25); animation-duration: 16s; animation-delay: -3s; }
+    .auth-particle:nth-child(3) { width: 8px; height: 8px; background: rgba(56,189,248,0.2); animation-duration: 20s; animation-delay: -7s; }
+    .auth-particle:nth-child(4) { width: 5px; height: 5px; background: rgba(99,102,241,0.2); animation-duration: 14s; animation-delay: -5s; }
+    .auth-particle:nth-child(5) { width: 3px; height: 3px; background: rgba(168,85,247,0.3); animation-duration: 18s; animation-delay: -10s; }
+
+    @keyframes floatParticle {
+      0%, 100% { transform: translate(0, 0) scale(1); opacity: 0; }
+      10% { opacity: 1; }
+      50% { transform: translate(100px, -200px) scale(1.5); opacity: 0.6; }
+      90% { opacity: 0.2; }
+    }
+
+    .auth-card {
+      position: relative;
+      background: rgba(255,255,255,0.06);
+      backdrop-filter: blur(24px) saturate(150%);
+      -webkit-backdrop-filter: blur(24px) saturate(150%);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 24px;
+      padding: 48px 40px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow:
+        0 8px 32px rgba(0,0,0,0.3),
+        0 0 80px rgba(99,102,241,0.08),
+        inset 0 1px 0 rgba(255,255,255,0.1);
+      animation: cardAppear 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+      text-align: center;
+    }
+    @keyframes cardAppear {
+      from { opacity: 0; transform: translateY(30px) scale(0.95); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .auth-logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .auth-logo svg {
+      width: 40px; height: 40px;
+      filter: drop-shadow(0 0 12px rgba(99,102,241,0.4));
+    }
+    .auth-logo svg rect, .auth-logo svg path { stroke: #818cf8; }
+    .auth-logo-text {
+      font-size: 28px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #818cf8, #c084fc, #38bdf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .auth-subtitle {
+      color: rgba(255,255,255,0.5);
+      font-size: 15px;
+      font-weight: 500;
+      margin-bottom: 36px;
+      line-height: 1.5;
+    }
+
+    .auth-divider {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin: 28px 0;
+      color: rgba(255,255,255,0.25);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .auth-divider::before, .auth-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+    }
+
+    /* Google Sign-In Button */
+    .google-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      width: 100%;
+      padding: 14px 24px;
+      border-radius: 14px;
+      border: 1.5px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+    .google-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(168,85,247,0.15));
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .google-btn:hover {
+      border-color: rgba(129,140,248,0.4);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(99,102,241,0.25), 0 0 0 1px rgba(129,140,248,0.1);
+    }
+    .google-btn:hover::before { opacity: 1; }
+    .google-btn:active { transform: translateY(0); }
+
+    .google-btn svg {
+      width: 20px; height: 20px;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 1;
+    }
+    .auth-email-form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+    }
+    .auth-email-input {
+      width: 100%;
+      padding: 14px 20px;
+      border-radius: 14px;
+      border: 1.5px solid rgba(255,255,255,0.12);
+      background: rgba(0,0,0,0.2);
+      color: #fff;
+      font-size: 15px;
+      font-family: inherit;
+      outline: none;
+      transition: all 0.3s;
+    }
+    .auth-email-input:focus {
+      border-color: rgba(129,140,248,0.6);
+      box-shadow: 0 0 0 3px rgba(129,140,248,0.15);
+    }
+    .auth-success-msg {
+      padding: 12px;
+      border-radius: 10px;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #34d399;
+      font-size: 13px;
+      text-align: center;
+      line-height: 1.4;
+    }
+    .google-btn span {
+      position: relative;
+      z-index: 1;
+    }
+
+    .auth-footer {
+      margin-top: 32px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.3);
+      line-height: 1.6;
+    }
+    .auth-footer a {
+      color: rgba(129,140,248,0.7);
+      text-decoration: none;
+    }
+    .auth-footer a:hover { color: #818cf8; }
+
+    /* Loading spinner for auth */
+    .auth-loading {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      padding: 20px 0;
+    }
+    .auth-loading.show { display: flex; }
+    .auth-spinner {
+      width: 40px; height: 40px;
+      border: 3px solid rgba(129,140,248,0.2);
+      border-top-color: #818cf8;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .auth-loading-text {
+      color: rgba(255,255,255,0.6);
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       USER MENU (Header)
+    ═══════════════════════════════════════════════════════════════ */
+    .user-menu {
+      position: relative;
+      display: none;
+    }
+    .user-menu.show { display: flex; }
+
+    .user-avatar-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 12px 4px 4px;
+      border-radius: 100px;
+      border: 1.5px solid var(--border);
+      background: var(--surface);
+      cursor: pointer;
+      transition: all var(--transition);
+      font-family: inherit;
+    }
+    .user-avatar-btn:hover {
+      border-color: var(--primary);
+      box-shadow: 0 2px 8px var(--primary-glow);
+    }
+    .user-avatar {
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--primary);
+    }
+    .user-avatar-placeholder {
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), #a855f7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .user-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      max-width: 120px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .user-dropdown {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-md);
+      overflow: hidden;
+      display: none;
+      z-index: 200;
+      min-width: 200px;
+      animation: dropIn 0.15s ease;
+    }
+    .user-dropdown.show { display: block; }
+
+    .user-dropdown-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .user-dropdown-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .user-dropdown-email {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+      word-break: break-all;
+    }
+
+    .user-dropdown-item {
+      padding: 10px 16px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: background 0.1s;
+      border: none;
+      background: transparent;
+      width: 100%;
+      font-family: inherit;
+      text-align: left;
+    }
+    .user-dropdown-item:hover { background: var(--primary-light); }
+    .user-dropdown-item.danger { color: var(--danger); }
+    .user-dropdown-item.danger:hover { background: var(--danger-light); }
+    .user-dropdown-item svg { width: 16px; height: 16px; }
+
+    
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
-
-<!-- Auth Overlay -->
 <div class="auth-overlay" id="authOverlay">
-  <div class="auth-box">
-    <div class="logo" style="justify-content: center; margin: 0 0 16px 0; font-size: 28px;">
+  <div class="auth-particles">
+    <div class="auth-particle" style="top:20%;left:10%"></div>
+    <div class="auth-particle" style="top:60%;left:80%"></div>
+    <div class="auth-particle" style="top:80%;left:30%"></div>
+    <div class="auth-particle" style="top:30%;left:70%"></div>
+    <div class="auth-particle" style="top:50%;left:50%"></div>
+  </div>
+  <div class="auth-card">
+    <div class="auth-logo">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="3" y="3" width="18" height="18" rx="3"/>
         <path d="M9 12l2 2 4-4"/>
       </svg>
-      TaskFlow Pro
+      <span class="auth-logo-text">TaskFlow Pro</span>
     </div>
-    <div class="auth-subtitle">Quản lý công việc thông minh.\nĐăng nhập để tiếp tục.</div>
-    
-    <button class="auth-btn btn-google" onclick="signInWithGoogle()">
-      <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-      Đăng nhập bằng Google
+    <p class="auth-subtitle" id="authSubtitle">Quản lý công việc thông minh.<br>Đồng bộ mọi nơi, mọi thiết bị.</p>
+
+    <button class="google-btn" id="googleSignInBtn" onclick="signInWithGoogle()">
+      <svg viewBox="0 0 24 24" width="20" height="20">
+        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+      </svg>
+      <span data-i18n="auth_google_btn">Đăng nhập bằng Google</span>
     </button>
+
+    <div class="auth-divider" data-i18n="auth_divider">hoặc đăng nhập bằng email</div>
+
+    <div id="authForm" class="auth-email-form">
+      <input type="email" id="authEmailInput" class="auth-email-input" data-i18n-placeholder="auth_email_placeholder" placeholder="Nhập email của bạn..." />
+      <input type="password" id="authPasswordInput" class="auth-email-input" data-i18n-placeholder="auth_pass_placeholder" placeholder="Nhập mật khẩu..." />
+      <button class="google-btn" onclick="signInWithEmail()" id="emailSignInBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+          <polyline points="10 17 15 12 10 7"/>
+          <line x1="15" y1="12" x2="3" y2="12"/>
+        </svg>
+        <span data-i18n="auth_email_btn">Đăng nhập / Đăng ký</span>
+      </button>
+    </div>
+
+    <div class="auth-loading" id="authLoading">
+      <div class="auth-spinner"></div>
+      <span class="auth-loading-text" data-i18n="auth_loading">Đang xác thực...</span>
+    </div>
+
+    <p class="auth-footer" data-i18n="auth_footer">Dữ liệu được bảo mật bởi Supabase.<br>Mỗi tài khoản có dữ liệu riêng biệt.</p>
   </div>
 </div>
+
+<!-- ═══ MIGRATION MODAL ═══ -->
+<div class="migration-overlay" id="migrationOverlay">
+  <div class="migration-card">
+    <div class="migration-icon">📦</div>
+    <h3 class="migration-title" data-i18n="migrate_title">Phát hiện dữ liệu cũ</h3>
+    <p class="migration-desc" id="migrationDesc">
+      Tìm thấy <span class="migration-count" id="migrationCount">0</span> công việc đã lưu trên thiết bị này.
+      Bạn có muốn đồng bộ lên tài khoản cloud không?
+    </p>
+    <div class="migration-actions">
+      <button class="migration-btn primary" onclick="doMigration()" data-i18n="migrate_yes">Đồng bộ lên cloud</button>
+      <button class="migration-btn secondary" onclick="skipMigration()" data-i18n="migrate_no">Bỏ qua</button>
+    </div>
+  </div>
+</div>
+
 
 <!-- ═══ HEADER ═══ -->
 <header>
@@ -858,12 +1213,8 @@
     <button class="nav-tab active" id="navTasks" onclick="switchTab('tasks')" data-i18n="tab_tasks">Công việc</button>
     <button class="nav-tab" id="navDashboard" onclick="switchTab('dashboard')" data-i18n="tab_dashboard">Dashboard</button>
   </div>
-  <div class="user-profile" onclick="signOut()" title="Đăng xuất">
-      <div class="avatar" id="userAvatarInitials"></div>
-      <img src="" alt="Avatar" class="avatar" id="userAvatar" style="display: none;" />
-      <span class="user-name" id="userName">User</span>
-    </div>
-    <div class="header-actions">
+  
+<div class="header-actions">
     <!-- Language toggle -->
     <div style="position:relative">
       <button class="header-btn" id="langBtn" onclick="toggleLangDropdown()" title="Language">
@@ -1282,7 +1633,7 @@ function todayStr() {
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
-  return ${year}--;
+  return `${year}-${month}-${day}`;
 }
 
 function initCalendarMonth() {
