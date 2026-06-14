@@ -574,6 +574,7 @@
     }
     .action-btn:hover { background: var(--bg); transform: scale(1.1); }
     .action-btn.edit:hover   { color: var(--primary); background: var(--primary-light); }
+    .action-btn.move:hover   { color: var(--warning); background: var(--warning-light); }
     .action-btn.delete:hover { color: var(--danger); background: var(--danger-light); }
 
     .task-card.editing .task-text { display: none; }
@@ -768,8 +769,9 @@
       .stats-grid { grid-template-columns: 1fr 1fr; }
       .chart-top { flex-direction: column; }
       .chart-nav-label { min-width: 120px; font-size: 12px; }
-      .add-form { flex-direction: column; }
-      .add-form input[type="text"] { min-width: 100%; }
+      .add-form { flex-direction: column; align-items: stretch; }
+      .add-form input[type="text"] { flex: none; width: 100%; height: 44px; }
+      .priority-select, .btn-add { width: 100%; }
       .header-actions { gap: 4px; }
       .header-btn { width: 34px; height: 34px; }
     }
@@ -1261,6 +1263,7 @@
   <div class="nav-tabs">
     <button class="nav-tab active" id="navTasks" onclick="switchTab('tasks')" data-i18n="tab_tasks">Công việc</button>
     <button class="nav-tab" id="navDashboard" onclick="switchTab('dashboard')" data-i18n="tab_dashboard">Dashboard</button>
+    <button class="nav-tab" id="navRecurring" onclick="switchTab('recurring')" data-i18n="tab_recurring">Định kì</button>
   </div>
   
 <div class="header-actions">
@@ -1449,6 +1452,51 @@
     </div>
   </div>
 
+  <!-- ═══════════════════════════════════════════════════════════
+       RECURRING TAB
+  ═══════════════════════════════════════════════════════════ -->
+  <div id="tab-recurring" class="section">
+    <div class="chart-card">
+      <h3 data-i18n="recurring_title" style="margin-bottom: 20px;">Thêm công việc định kì</h3>
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <input type="text" id="recTaskInput" data-i18n-placeholder="add_placeholder" placeholder="Nhập công việc mới…" style="width: 100%; height: 44px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 0 14px; background: var(--surface2); color: var(--text); outline: none; font-family: inherit; font-size: 14px;" />
+        
+        <select id="recPriorityInput" class="priority-select" style="width: 100%; height: 44px;">
+          <option value="high">🔴 Cao</option>
+          <option value="medium" selected>🟡 Trung bình</option>
+          <option value="low">⚪ Thấp</option>
+        </select>
+        
+        <select id="recTypeInput" class="priority-select" style="width: 100%; height: 44px;" onchange="document.getElementById('recValueContainer').innerHTML = this.value === 'month' ? '<input type=\\'number\\' id=\\'recValueInput\\' min=\\'1\\' max=\\'31\\' value=\\'1\\' style=\\'width:100%;height:44px;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:0 14px;background:var(--surface2);color:var(--text);\\' />' : '<select id=\\'recValueInput\\' class=\\'priority-select\\' style=\\'width:100%;height:44px;\\'><option value=\\'1\\'>Thứ 2</option><option value=\\'2\\'>Thứ 3</option><option value=\\'3\\'>Thứ 4</option><option value=\\'4\\'>Thứ 5</option><option value=\\'5\\'>Thứ 6</option><option value=\\'6\\'>Thứ 7</option><option value=\\'0\\'>Chủ nhật</option></select>'">
+          <option value="month" data-i18n="rec_type_month">Theo ngày trong tháng</option>
+          <option value="week" data-i18n="rec_type_week">Theo ngày trong tuần</option>
+        </select>
+        
+        <div id="recValueContainer">
+          <input type="number" id="recValueInput" min="1" max="31" value="1" style="width:100%;height:44px;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:0 14px;background:var(--surface2);color:var(--text);" />
+        </div>
+        
+        <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+          <div style="flex: 1; min-width: 200px;">
+            <label style="font-size: 13px; color: var(--text-muted); font-weight: 500; margin-bottom: 6px; display: block;" data-i18n="rec_start">Từ ngày</label>
+            <input type="date" id="recStartInput" style="width: 100%; height: 44px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 0 14px; background: var(--surface2); color: var(--text);" />
+          </div>
+          <div style="flex: 1; min-width: 200px;">
+            <label style="font-size: 13px; color: var(--text-muted); font-weight: 500; margin-bottom: 6px; display: block;" data-i18n="rec_end">Đến ngày</label>
+            <input type="date" id="recEndInput" style="width: 100%; height: 44px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 0 14px; background: var(--surface2); color: var(--text);" />
+          </div>
+        </div>
+        
+        <button class="btn-add" onclick="addRecurringTasks()" style="justify-content: center; margin-top: 8px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          <span data-i18n="add_bulk_btn">Thêm hàng loạt</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
 </main>
 
 <div class="toast-container" id="toastContainer"></div>
@@ -1478,6 +1526,14 @@ const i18n = {
     period_year: 'Năm',
     current: 'Hiện tại',
     recent_title: 'Công việc theo ngày (7 ngày gần nhất)',
+    tab_recurring: 'Định kì',
+    recurring_title: 'Thêm công việc định kì',
+    rec_type_month: 'Theo ngày trong tháng',
+    rec_type_week: 'Theo ngày trong tuần',
+    rec_start: 'Từ ngày',
+    rec_end: 'Đến ngày',
+    add_bulk_btn: 'Thêm hàng loạt',
+    toast_moved: 'Đã chuyển sang ngày tiếp theo ➡️',
     priority_high: '🔴 Cao',
     priority_medium: '🟡 Trung bình',
     priority_low: '⚪ Thấp',
@@ -1557,6 +1613,14 @@ const i18n = {
     period_year: 'Year',
     current: 'Current',
     recent_title: 'Tasks by Day (Last 7 Days)',
+    tab_recurring: 'Recurring',
+    recurring_title: 'Add recurring tasks',
+    rec_type_month: 'By day of the month',
+    rec_type_week: 'By day of the week',
+    rec_start: 'Start Date',
+    rec_end: 'End Date',
+    add_bulk_btn: 'Add Bulk',
+    toast_moved: 'Moved to next day ➡️',
     priority_high: '🔴 High',
     priority_medium: '🟡 Medium',
     priority_low: '⚪ Low',
@@ -1973,6 +2037,108 @@ async function deleteTask(id) {
   showToast(t('toast_deleted'));
 }
 
+async function moveTask(id) {
+  const task = getTasksForDate(selectedDate).find(t => t.id === id);
+  if (!task) return;
+  
+  const d = new Date(selectedDate);
+  d.setDate(d.getDate() + 1);
+  const nextDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+  const { error } = await supabaseClient
+    .from('tasks')
+    .update({ task_date: nextDate, updated_at: new Date().toISOString() })
+    .eq('id', id).eq('user_id', currentUser.id);
+
+  if (error) {
+    console.error('Move error:', error);
+    showToast('Lỗi: ' + error.message, 'error');
+    return;
+  }
+
+  tasksCache[selectedDate] = tasksCache[selectedDate].filter(t => t.id !== id);
+  if (!tasksCache[nextDate]) tasksCache[nextDate] = [];
+  tasksCache[nextDate].push(task);
+  
+  renderTasks();
+  renderCalendar();
+  updateDateBar();
+  showToast(t('toast_moved') || 'Đã chuyển sang ngày mai', 'success');
+}
+
+async function addRecurringTasks() {
+  if (!currentUser) { showToast('Vui lòng đăng nhập', 'error'); return; }
+  const text = document.getElementById('recTaskInput').value.trim();
+  const priority = document.getElementById('recPriorityInput').value;
+  const recType = document.getElementById('recTypeInput').value;
+  const recValue = parseInt(document.getElementById('recValueInput').value);
+  const startStr = document.getElementById('recStartInput').value;
+  const endStr = document.getElementById('recEndInput').value;
+
+  if (!text) { showToast(t('toast_empty'), 'error'); return; }
+  if (!startStr || !endStr) { showToast('Vui lòng chọn Từ ngày và Đến ngày', 'error'); return; }
+
+  const startDate = new Date(startStr);
+  const endDate = new Date(endStr);
+  if (startDate > endDate) { showToast('Ngày bắt đầu phải trước ngày kết thúc', 'error'); return; }
+
+  const payload = [];
+  const currDate = new Date(startDate);
+  
+  while (currDate <= Math.min(endDate.getTime(), startDate.getTime() + 5 * 365 * 24 * 3600 * 1000)) { // limit 5 years to prevent freeze
+    let match = false;
+    if (recType === 'month') {
+      if (currDate.getDate() === recValue) match = true;
+    } else if (recType === 'week') {
+      if (currDate.getDay() === recValue) match = true;
+    }
+    
+    if (match) {
+      const ds = `${currDate.getFullYear()}-${String(currDate.getMonth()+1).padStart(2,'0')}-${String(currDate.getDate()).padStart(2,'0')}`;
+      payload.push({
+        user_id: currentUser.id,
+        task_date: ds,
+        text: text,
+        priority: priority,
+        done: false
+      });
+    }
+    currDate.setDate(currDate.getDate() + 1);
+  }
+
+  if (payload.length === 0) {
+    showToast('Không tìm thấy ngày nào phù hợp trong khoảng thời gian này', 'error');
+    return;
+  }
+
+  const { data, error } = await supabaseClient
+    .from('tasks')
+    .insert(payload)
+    .select();
+
+  if (error) {
+    console.error('Bulk add error:', error);
+    showToast('Lỗi: ' + error.message, 'error');
+    return;
+  }
+
+  if (data) {
+    data.forEach(row => {
+      const ds = row.task_date;
+      if (!tasksCache[ds]) tasksCache[ds] = [];
+      tasksCache[ds].push(rowToTask(row));
+    });
+  }
+
+  document.getElementById('recTaskInput').value = '';
+  
+  showToast(`Đã thêm ${payload.length} công việc định kì`, 'success');
+  switchTab('tasks');
+  renderCalendar();
+  updateDateBar();
+  renderTasks();
+}
+
 function startEdit(id) {
   const card = document.querySelector(`[data-id="${id}"]`);
   const task = getTasksForDate(selectedDate).find(t => t.id === id);
@@ -2071,6 +2237,7 @@ function renderTasks() {
       </div>
       <div class="task-actions">
         ${!task.done?`<button class="action-btn edit" onclick="startEdit('${task.id}')" title="Edit">✏️</button>`:''}
+        ${!task.done?`<button class="action-btn move" onclick="moveTask('${task.id}')" title="Chuyển sang ngày tiếp theo">➡️</button>`:''}
         <button class="action-btn delete" onclick="deleteTask('${task.id}')" title="Delete">🗑️</button>
       </div>
     </div>`).join('');
@@ -2335,7 +2502,8 @@ function switchTab(tab) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-' + tab).classList.add('active');
-  document.getElementById(tab === 'tasks' ? 'navTasks' : 'navDashboard').classList.add('active');
+  const btnId = tab === 'tasks' ? 'navTasks' : (tab === 'dashboard' ? 'navDashboard' : 'navRecurring');
+  document.getElementById(btnId).classList.add('active');
   if (tab === 'dashboard') renderDashboard();
 }
 
