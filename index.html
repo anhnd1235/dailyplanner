@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
   <style>
     /* ═══════════════════════════════════════════════════════════════
        RESET & DESIGN TOKENS
@@ -2241,7 +2242,79 @@ function renderTasks() {
         <button class="action-btn delete" onclick="deleteTask('${task.id}')" title="Delete">🗑️</button>
       </div>
     </div>`).join('');
+    
+  initSortable();
 }
+
+let sortableInstance = null;
+function initSortable() {
+  const list = document.getElementById('taskList');
+  if (!list) return;
+  if (sortableInstance) {
+    sortableInstance.destroy();
+  }
+  sortableInstance = new Sortable(list, {
+    animation: 150,
+    delay: 200,
+    delayOnTouchOnly: true,
+    onEnd: function (evt) {
+      const allTasks = tasksCache[selectedDate];
+      if (!allTasks) return;
+      
+      const newOrderIds = Array.from(list.querySelectorAll('.task-card')).map(el => el.getAttribute('data-id'));
+      
+      const orderedTasks = [];
+      const unrenderedTasks = [];
+      
+      const renderedTaskMap = new Map();
+      allTasks.forEach(t => {
+        if (newOrderIds.includes(t.id)) {
+          renderedTaskMap.set(t.id, t);
+        } else {
+          unrenderedTasks.push(t);
+        }
+      });
+      
+      newOrderIds.forEach(id => {
+        if (renderedTaskMap.has(id)) {
+          orderedTasks.push(renderedTaskMap.get(id));
+        }
+      });
+      
+      tasksCache[selectedDate] = orderedTasks.concat(unrenderedTasks);
+      
+      // Update created_at in background to persist order in Supabase
+      // Sortable doesn't need us to re-render immediately
+      updateTaskOrderInCloud(tasksCache[selectedDate]);
+    }
+  });
+}
+
+async function updateTaskOrderInCloud(reorderedTasks) {
+  if (!currentUser || reorderedTasks.length === 0) return;
+  // To preserve order based on created_at (since loadAllTasksFromCloud uses order by created_at ascending)
+  // We can just slightly tweak created_at of all items for this date to be sequential
+  try {
+    const baseDate = new Date(reorderedTasks[0].createdAt || new Date());
+    baseDate.setHours(8, 0, 0, 0); // start at 8 AM
+    
+    for (let i = 0; i < reorderedTasks.length; i++) {
+      const t = reorderedTasks[i];
+      const newTime = new Date(baseDate.getTime() + i * 1000).toISOString();
+      t.createdAt = newTime;
+      
+      supabaseClient
+        .from('tasks')
+        .update({ created_at: newTime })
+        .eq('id', t.id)
+        .eq('user_id', currentUser.id)
+        .then(); // fire and forget to not block
+    }
+  } catch(e) {
+    console.error('Error updating order:', e);
+  }
+}
+
 
 function onInputKey(e) {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addTask(); }
