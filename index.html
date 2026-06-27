@@ -564,7 +564,8 @@
     .priority-badge.low    { background: var(--bg);            color: var(--text-muted); }
     .task-time { font-size: 11px; color: var(--text-light); }
 
-    .task-actions { display: flex; gap: 4px; flex-shrink: 0; }
+    .task-actions { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; align-items: flex-end; }
+    .task-actions-row { display: flex; gap: 4px; justify-content: flex-end; }
     .action-btn {
       width: 32px; height: 32px;
       border: none; border-radius: var(--radius-sm);
@@ -576,6 +577,8 @@
     .action-btn:hover { background: var(--bg); transform: scale(1.1); }
     .action-btn.edit:hover   { color: var(--primary); background: var(--primary-light); }
     .action-btn.move:hover   { color: var(--warning); background: var(--warning-light); }
+    .action-btn.move-up:hover { color: var(--primary); background: var(--primary-light); }
+    .action-btn.move-down:hover { color: var(--primary); background: var(--primary-light); }
     .action-btn.delete:hover { color: var(--danger); background: var(--danger-light); }
 
     .task-card.editing .task-text { display: none; }
@@ -2067,6 +2070,42 @@ async function moveTask(id) {
   showToast(t('toast_moved') || 'Đã chuyển sang ngày mai', 'success');
 }
 
+function moveTaskUp(id) {
+  const all = tasksCache[selectedDate];
+  if (!all) return;
+  const visible = currentFilter === 'pending' ? all.filter(t => !t.done)
+    : currentFilter === 'done' ? all.filter(t => t.done) : all;
+  const vIdx = visible.findIndex(t => t.id === id);
+  if (vIdx > 0) {
+    const prevId = visible[vIdx - 1].id;
+    const aIdx1 = all.findIndex(t => t.id === id);
+    const aIdx2 = all.findIndex(t => t.id === prevId);
+    const temp = all[aIdx1];
+    all[aIdx1] = all[aIdx2];
+    all[aIdx2] = temp;
+    updateTaskOrderInCloud(all);
+    renderTasks();
+  }
+}
+
+function moveTaskDown(id) {
+  const all = tasksCache[selectedDate];
+  if (!all) return;
+  const visible = currentFilter === 'pending' ? all.filter(t => !t.done)
+    : currentFilter === 'done' ? all.filter(t => t.done) : all;
+  const vIdx = visible.findIndex(t => t.id === id);
+  if (vIdx !== -1 && vIdx < visible.length - 1) {
+    const nextId = visible[vIdx + 1].id;
+    const aIdx1 = all.findIndex(t => t.id === id);
+    const aIdx2 = all.findIndex(t => t.id === nextId);
+    const temp = all[aIdx1];
+    all[aIdx1] = all[aIdx2];
+    all[aIdx2] = temp;
+    updateTaskOrderInCloud(all);
+    renderTasks();
+  }
+}
+
 async function addRecurringTasks() {
   if (!currentUser) { showToast('Vui lòng đăng nhập', 'error'); return; }
   const text = document.getElementById('recTaskInput').value.trim();
@@ -2237,9 +2276,15 @@ function renderTasks() {
         </div>
       </div>
       <div class="task-actions">
-        ${!task.done?`<button class="action-btn edit" onclick="startEdit('${task.id}')" title="Edit">✏️</button>`:''}
-        ${!task.done?`<button class="action-btn move" onclick="moveTask('${task.id}')" title="Chuyển sang ngày tiếp theo">➡️</button>`:''}
-        <button class="action-btn delete" onclick="deleteTask('${task.id}')" title="Delete">🗑️</button>
+        <div class="task-actions-row">
+          ${!task.done?`<button class="action-btn edit" onclick="startEdit('${task.id}')" title="Edit">✏️</button>`:''}
+          ${!task.done?`<button class="action-btn move" onclick="moveTask('${task.id}')" title="Chuyển sang ngày tiếp theo">➡️</button>`:''}
+          <button class="action-btn delete" onclick="deleteTask('${task.id}')" title="Delete">🗑️</button>
+        </div>
+        <div class="task-actions-row">
+          <button class="action-btn move-up" onclick="moveTaskUp('${task.id}')" title="Up">⬆️</button>
+          <button class="action-btn move-down" onclick="moveTaskDown('${task.id}')" title="Down">⬇️</button>
+        </div>
       </div>
     </div>`).join('');
     
